@@ -242,3 +242,10 @@ app_license = "mit"
 # 	"Logging DocType Name": 30  # days to retain logs
 # }
 
+# Fixtures
+fixtures = [
+    {
+        "dt": "Customs Tariff Number",  # Export all custom fields
+        "filters": []
+    },
+]
