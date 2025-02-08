@@ -17,7 +17,18 @@ def execute(filters=None):
         {"label": "Qty", "fieldname": "qty", "fieldtype": "Float", "width": 100},
         {"label": "UOM", "fieldname": "uom", "fieldtype": "Data", "width": 100},
         {"label": "Value Excl. Sales Tax", "fieldname": "amount", "fieldtype": "Currency", "width": 150},
-        {"label": "Further Tax", "fieldname": "further_tax", "fieldtype": "Currency", "width": 120}
+        {"label": "Sales Tax/ FED in ST Mode", "fieldname": "st_amount", "fieldtype": "Currency", "width": 150},
+        {"label": "Fixed / notified value or Retail Price / Higher of actual and minimum fixed value of supplies", "fieldname": "fixed_notified_rate", "fieldtype": "Currency", "width": 150},
+        {"label": "Extra Tax", "fieldname": "extra_tax", "fieldtype": "Currency", "width": 100},
+        {"label": "Further Tax", "fieldname": "further_tax", "fieldtype": "Currency", "width": 120},
+        {"label": "Total Value of Sales (In case of PFAD only)", "fieldname": "total_value_of_sales_pfad_only", "fieldtype": "Currency", "width": 120},
+        {"label": "ST Withheld at Source", "fieldname": "st_wh_at_source", "fieldtype": "Currency", "width": 120},
+        {"label": "Exemption SRO No./ Schedule No.", "fieldname": "exemption_sro_schedule", "fieldtype": "Data", "width": 120},
+        {"label": "Exemption Item S. No.", "fieldname": "exemption_item_sr_no", "fieldtype": "Data", "width": 100},
+
+
+
+
     ]
     
     conditions = {"docstatus": 1}
@@ -28,47 +39,57 @@ def execute(filters=None):
     
     data = []
     sales_invoices = frappe.get_all("Sales Invoice", filters=conditions, fields=[
-        "name", "customer", "customer_name", "tax_category", "posting_date", "company_address"
+        "name", "customer", "customer_name", "tax_category", "posting_date", "company_address",
+        "custom_customer_st_status"
     ])
-    
     for invoice in sales_invoices:
-        company_address_list = frappe.get_list('Address', filters={'is_your_company_address': 1, 'address_type': 'Billing'}, fields=['address_line1', 'city', 'state', 'country', 'phone','custom_province'])
-        company_address = company_address_list[0] if company_address_list else None
-        company_province = company_address.get('custom_province')
-        customer_doc = frappe.get_doc("Customer",invoice.customer)
-        customer_address_doc = frappe.get_doc("Address",customer_doc.customer_primary_address)
-        customer_tax_id = None
-        if customer_doc.tax_category == "Registered":
-             customer_tax_id = customer_doc.tax_id
-        elif customer_doc.tax_category == "Unregistered":
-             customer_tax_id = customer_doc.custom_cnic_no
+        company_address_list = frappe.get_list('Address', filters={'is_your_company_address': 1, 'address_type': 'Billing'}, fields=['custom_province'])
+        company_province = company_address_list[0].get('custom_province') if company_address_list else None
         
-        
+        customer_doc = frappe.get_doc("Customer", invoice.customer)
+        customer_address_doc = frappe.get_doc("Address", customer_doc.customer_primary_address)
         customer_province = customer_address_doc.custom_province
-        
+        customer_tax_id = customer_doc.tax_id if customer_doc.tax_category == "Registered" else customer_doc.custom_cnic_no
         
         items = frappe.get_all("Sales Invoice Item", filters={"parent": invoice.name}, fields=[
-            "item_code", "description", "tax_classification", "customer_sales_tax_rate", "qty", "uom", "amount", "custom_further_tax",
-            "custom_hs_code","item_group"
+            "custom_hs_code", "item_group", "custom_st_rate", "qty", "uom", "amount", "custom_further_tax", "custom_st"
         ])
         
+        grouped_items = {}
         for item in items:
+            hs_code = item["custom_hs_code"]
+            if hs_code not in grouped_items:
+                grouped_items[hs_code] = {
+                    "qty": 0, "amount": 0, "further_tax": 0, "st_amount": 0, "sales_tax_rate": item["custom_st_rate"],
+                    "uom": item["uom"], "tax_classification": item["item_group"]
+                }
+            
+            grouped_items[hs_code]["qty"] += flt(item["qty"])
+            grouped_items[hs_code]["amount"] += flt(item["amount"])
+            grouped_items[hs_code]["further_tax"] += flt(item["custom_further_tax"])
+            grouped_items[hs_code]["st_amount"] += flt(item["custom_st"])
+        
+        for hs_code, values in grouped_items.items():
+            item_hs_code_doc = frappe.get_doc("Customs Tariff Number", hs_code)
+            fbr_desc = f"{item_hs_code_doc.tariff_number}: {item_hs_code_doc.custom_complete_description}"
+            
             data.append({
-                "customer_tax_id": frappe.get_value("Customer", invoice.customer, "tax_id"),
+                "customer_tax_id": customer_tax_id,
                 "customer_name": invoice.customer,
-                "tax_category": invoice.customer_st_status,
+                "tax_category": invoice.custom_customer_st_status,
                 "supplier_province": company_province,
                 "customer_province": customer_province,
                 "doc_type": "Sales Invoice",
                 "doc_name": invoice.name,
                 "posting_date": invoice.posting_date,
-                "hs_code": frappe.get_cached_doc("Customs Tariff Number",item.get('custom_hs_code')).custom_complete_description or None,
-                "tax_classification": item['item_group'],
-                "sales_tax_rate": item["customer_st_rate"],
-                "qty": item["qty"],
-                "uom": item["uom"],
-                "amount": item["amount"],
-                "further_tax": item["custom_further_tax"]
+                "hs_code": fbr_desc,
+                "tax_classification": values["tax_classification"],
+                "sales_tax_rate": values["sales_tax_rate"],
+                "qty": values["qty"],
+                "uom": values["uom"],
+                "amount": values["amount"],
+                "further_tax": values["further_tax"],
+                "st_amount": values["st_amount"]
             })
     
     return columns, data
