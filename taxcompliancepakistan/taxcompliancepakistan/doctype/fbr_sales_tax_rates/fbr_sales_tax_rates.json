@@ -1,0 +1,54 @@
+{
+ "actions": [],
+ "autoname": "field:fbr_tax_rate_description",
+ "creation": "2025-02-08 12:56:35.042682",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "fbr_tax_rate_description",
+  "rate_application_basis"
+ ],
+ "fields": [
+  {
+   "fieldname": "fbr_tax_rate_description",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "FBR Tax Rate Description",
+   "reqd": 1,
+   "unique": 1
+  },
+  {
+   "default": "Apply Percentage",
+   "fieldname": "rate_application_basis",
+   "fieldtype": "Select",
+   "label": "Rate Application Basis",
+   "options": "Apply Percentage\nApply Percentage Along With Charge on UOM\nApply on UOM only\nApply Flat Rate in Rupees",
+   "reqd": 1
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2025-02-08 14:48:53.181208",
+ "modified_by": "Administrator",
+ "module": "TaxCompliancePakistan",
+ "name": "FBR Sales Tax Rates",
+ "naming_rule": "By fieldname",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

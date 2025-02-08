@@ -32,27 +32,39 @@ def execute(filters=None):
     ])
     
     for invoice in sales_invoices:
-        company_address = frappe.get_value("Address", invoice.company_address, "province")
-        customer_address = frappe.get_value("Customer", invoice.customer, "billing_address")
-        customer_province = frappe.get_value("Address", customer_address, "province")
+        company_address_list = frappe.get_list('Address', filters={'is_your_company_address': 1, 'address_type': 'Billing'}, fields=['address_line1', 'city', 'state', 'country', 'phone','custom_province'])
+        company_address = company_address_list[0] if company_address_list else None
+        company_province = company_address.get('custom_province')
+        customer_doc = frappe.get_doc("Customer",invoice.customer)
+        customer_address_doc = frappe.get_doc("Address",customer_doc.customer_primary_address)
+        customer_tax_id = None
+        if customer_doc.tax_category == "Registered":
+             customer_tax_id = customer_doc.tax_id
+        elif customer_doc.tax_category == "Unregistered":
+             customer_tax_id = customer_doc.custom_cnic_no
+        
+        
+        customer_province = customer_address_doc.custom_province
+        
         
         items = frappe.get_all("Sales Invoice Item", filters={"parent": invoice.name}, fields=[
-            "item_code", "description", "tax_classification", "customer_sales_tax_rate", "qty", "uom", "amount", "custom_further_tax"
+            "item_code", "description", "tax_classification", "customer_sales_tax_rate", "qty", "uom", "amount", "custom_further_tax",
+            "custom_hs_code","item_group"
         ])
         
         for item in items:
             data.append({
                 "customer_tax_id": frappe.get_value("Customer", invoice.customer, "tax_id"),
                 "customer_name": invoice.customer,
-                "tax_category": invoice.tax_category,
-                "supplier_province": company_address,
+                "tax_category": invoice.customer_st_status,
+                "supplier_province": company_province,
                 "customer_province": customer_province,
                 "doc_type": "Sales Invoice",
                 "doc_name": invoice.name,
                 "posting_date": invoice.posting_date,
-                "hs_code": item["description"],
-                "tax_classification": item["tax_classification"],
-                "sales_tax_rate": item["customer_sales_tax_rate"],
+                "hs_code": frappe.get_cached_doc("Customs Tariff Number",item.get('custom_hs_code')).custom_complete_description or None,
+                "tax_classification": item['item_group'],
+                "sales_tax_rate": item["customer_st_rate"],
                 "qty": item["qty"],
                 "uom": item["uom"],
                 "amount": item["amount"],
