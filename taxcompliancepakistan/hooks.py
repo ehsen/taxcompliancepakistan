@@ -248,4 +248,8 @@ fixtures = [
         "dt": "Customs Tariff Number",  # Export all custom fields
         "filters": []
     },
+    {
+        "dt": "Tax Category",  # Tax Categories are Unique to Tax App
+        "filters": []
+    },
 ]
