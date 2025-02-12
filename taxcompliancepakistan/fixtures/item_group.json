@@ -13,6 +13,19 @@
   "taxes": []
  },
  {
+    "docstatus": 0,
+    "doctype": "Item Group",
+    "image": null,
+    "is_group": 1,
+    "item_group_defaults": [],
+    "item_group_name": "Sales Tax Classification",
+    "modified": "2025-02-08 14:10:15.904726",
+    "name": "Sales Tax Classification",
+    "old_parent": "All Item Groups",
+    "parent_item_group": "All Item Groups",
+    "taxes": []
+   },
+ {
   "docstatus": 0,
   "doctype": "Item Group",
   "image": null,
@@ -363,45 +376,7 @@
   "parent_item_group": "Sales Tax Classification",
   "taxes": []
  },
- {
-  "docstatus": 0,
-  "doctype": "Item Group",
-  "image": null,
-  "is_group": 1,
-  "item_group_defaults": [],
-  "item_group_name": "Sales Tax Classification",
-  "modified": "2025-02-08 14:10:15.904726",
-  "name": "Sales Tax Classification",
-  "old_parent": "All Item Groups",
-  "parent_item_group": "All Item Groups",
-  "taxes": []
- },
- {
-  "docstatus": 0,
-  "doctype": "Item Group",
-  "image": null,
-  "is_group": 0,
-  "item_group_defaults": [],
-  "item_group_name": "Consumable",
-  "modified": "2024-11-27 14:20:44.082738",
-  "name": "Consumable",
-  "old_parent": "All Item Groups",
-  "parent_item_group": "All Item Groups",
-  "taxes": []
- },
- {
-  "docstatus": 0,
-  "doctype": "Item Group",
-  "image": null,
-  "is_group": 0,
-  "item_group_defaults": [],
-  "item_group_name": "Services",
-  "modified": "2024-11-27 14:20:44.051157",
-  "name": "Services",
-  "old_parent": "All Item Groups",
-  "parent_item_group": "All Item Groups",
-  "taxes": []
- },
+ 
  {
   "docstatus": 0,
   "doctype": "Item Group",
@@ -440,39 +415,7 @@
   "old_parent": "All Item Groups",
   "parent_item_group": "All Item Groups",
   "taxes": []
- },
- {
-  "docstatus": 0,
-  "doctype": "Item Group",
-  "image": null,
-  "is_group": 0,
-  "item_group_defaults": [],
-  "item_group_name": "Imported Chemicals",
-  "modified": "2025-01-21 17:43:37.898837",
-  "name": "Imported Chemicals",
-  "old_parent": "All Item Groups",
-  "parent_item_group": "All Item Groups",
-  "taxes": [
-   {
-    "item_tax_template": "ST15+0.5AT - AC",
-    "maximum_net_rate": 0.0,
-    "minimum_net_rate": 0.0,
-    "parent": "Imported Chemicals",
-    "parentfield": "taxes",
-    "parenttype": "Item Group",
-    "tax_category": "Registered Customers",
-    "valid_from": null
-   },
-   {
-    "item_tax_template": "ST15+0.5AT - AC",
-    "maximum_net_rate": 0.0,
-    "minimum_net_rate": 0.0,
-    "parent": "Imported Chemicals",
-    "parentfield": "taxes",
-    "parenttype": "Item Group",
-    "tax_category": "Unregistered Customers",
-    "valid_from": null
-   }
-  ]
  }
+ 
+ 
 ]
