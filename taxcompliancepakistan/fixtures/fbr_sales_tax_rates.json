@@ -1,0 +1,10 @@
+[
+ {
+  "docstatus": 0,
+  "doctype": "FBR Sales Tax Rates",
+  "fbr_tax_rate_description": "15.00%",
+  "modified": "2025-02-08 14:49:57.898130",
+  "name": "15.00%",
+  "rate_application_basis": "Apply Percentage"
+ }
+]

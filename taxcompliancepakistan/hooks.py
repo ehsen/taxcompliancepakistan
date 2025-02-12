@@ -252,4 +252,12 @@ fixtures = [
         "dt": "Tax Category",  # Tax Categories are Unique to Tax App
         "filters": []
     },
+    {
+        "dt": "Item Group",  # Tax Categories are Unique to Tax App
+        "filters": []
+    },
+    {
+        "dt": "FBR Sales Tax Rates",  # Tax Categories are Unique to Tax App
+        "filters": []
+    },
 ]
