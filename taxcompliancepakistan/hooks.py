@@ -26,7 +26,7 @@ app_license = "mit"
 
 # include js, css files in header of desk.html
 # app_include_css = "/assets/taxcompliancepakistan/css/taxcompliancepakistan.css"
-# app_include_js = "/assets/taxcompliancepakistan/js/taxcompliancepakistan.js"
+app_include_js = ["/assets/taxcompliancepakistan/js/js_overrides/purchase_invoice.js"]
 
 # include js, css files in header of web template
 # web_include_css = "/assets/taxcompliancepakistan/css/taxcompliancepakistan.css"
@@ -185,7 +185,7 @@ app_license = "mit"
 # 	"Task": "taxcompliancepakistan.task.get_dashboard_data"
 # }
 
-# exempt linked doctypes from being automatically cancelled
+# exempt linked doctypes from being automatically caSales Taxes and Chargesncelled
 #
 # auto_cancel_exempted_doctypes = ["Auto Repeat"]
 
