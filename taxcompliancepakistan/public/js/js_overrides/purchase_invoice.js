@@ -36,53 +36,6 @@ function getMultiplier(frm){
     
     return multiplier;
 }
-// Function to calculate taxes based on the conditions specified
-function calculate_taxes(frm, row) {
-    if (frm.doc.custom_purchase_invoice_type === "Import"){
-        return;
-    }
-    const item_tax_template = row.item_tax_template; // Assuming this is the field for item tax template
-    let sales_tax = 0;
-    let sales_tax_rate = 0;
-    let further_sales_tax = 0;
-    let advance_tax = 0;
-    let multiplier = getMultiplier(frm);
-    let qty = 1;
-    if (row.qty > 0){
-        qty = row.qty
-    }
-
-    if (item_tax_template) {
-        // Fetch the item tax template details
-        frappe.call({
-            method: "frappe.client.get",
-            args: {
-                doctype: "Item Tax Template",
-                name: item_tax_template
-            },
-            callback: function(response) {
-                if (response.message) {
-                    const tax_rates = response.message.taxes; // Assuming tax_rates is a field in the template
-                    console.log($`Qty is ${row}`);
-                    // Calculate Sales Tax from item tax template
-                    tax_rates.forEach(rate => {
-                        if (rate.custom_tax_category === "Sales Tax") {
-                            console.log(`tax rate detected ${rate.tax_rate}`);
-                            sales_tax += (rate.tax_rate * 0.01 * (qty * row.rate));
-                            sales_tax_rate += rate.tax_rate
-                        }
-                    });
-
-                    // Now calculate remaining taxes from Sales Taxes and Charges Template
-                    calculate_additional_taxes(frm, row, sales_tax,sales_tax_rate);
-                }
-            }
-        });
-    } else {
-        // If no item tax template, calculate all taxes from Sales Taxes and Charges Template
-        calculate_additional_taxes(frm, row, sales_tax,sales_tax_rate);
-    }
-}
 
 // Function to calculate additional taxes from Sales Taxes and Charges Template
 function calculate_additional_taxes(frm, row, sales_tax,sales_tax_rate) {
@@ -148,3 +101,87 @@ function calculate_additional_taxes(frm, row, sales_tax,sales_tax_rate) {
         console.warn("No Sales Taxes and Charges Template found."); // Debugging line
     }
 }
+
+function fetch_item_tax_template(row, callback) {
+    if (row.item_tax_template) {
+        console.log(`Returning item_tax_template directly: ${row.item_tax_template}`);
+        callback(row.item_tax_template);
+    } else {
+        // Access it from the item group
+        console.log(`Fetching item group for: ${row.item_group}`);
+        frappe.call({
+            method: "frappe.client.get",
+            args: {
+                doctype: "Item Group",
+                name: row.item_group
+            },
+            callback: function(response) {
+                console.log(`Response from item group fetch:`, response);
+                if (response.message) {
+                    const taxes = response.message.taxes || []; // Assuming taxes is the child table field
+                    console.log(`Taxes found:`, taxes);
+                    
+                    if (taxes.length > 0) {
+                        const salesTaxEntry = taxes[0]; // Assuming the first entry is relevant
+                        console.log(`Found sales tax entry:`, salesTaxEntry);
+                        
+                        if (salesTaxEntry.item_tax_template) {
+                            console.log(`Sales tax template in entry is ${salesTaxEntry.item_tax_template}`);
+                            callback(salesTaxEntry.item_tax_template);
+                        } else {
+                            callback(null);
+                        }
+                    } else {
+                        callback(null);
+                    }
+                } else {
+                    callback(null);
+                }
+            }
+        });
+    }
+}
+
+// Function to calculate taxes using a callback
+function calculate_taxes(frm, row) {
+    if (frm.doc.custom_purchase_invoice_type === "Import") {
+        return;
+    }
+
+    fetch_item_tax_template(row, function(item_tax_template) {
+        console.log(`Item tax template in calculate_taxes is ${item_tax_template}`);
+        let sales_tax = 0;
+        let sales_tax_rate = 0;
+        let qty = row.qty > 0 ? row.qty : 1;
+
+        if (item_tax_template) {
+            frappe.call({
+                method: "frappe.client.get",
+                args: {
+                    doctype: "Item Tax Template",
+                    name: item_tax_template
+                },
+                callback: function(response) {
+                    if (response.message) {
+                        const tax_rates = response.message.taxes || [];
+                        console.log(`Tax rates are ${tax_rates}`);
+                        
+                        tax_rates.forEach(rate => {
+                            if (rate.custom_tax_category === "Sales Tax") {
+                                console.log(`Tax rate detected ${rate.tax_rate}`);
+                                sales_tax += (rate.tax_rate * 0.01 * (qty * row.rate));
+                                sales_tax_rate += rate.tax_rate;
+                            }
+                        });
+
+                        calculate_additional_taxes(frm, row, sales_tax, sales_tax_rate);
+                    }
+                }
+            });
+        } else {
+            calculate_additional_taxes(frm, row, sales_tax, sales_tax_rate);
+        }
+    });
+}
+
+
