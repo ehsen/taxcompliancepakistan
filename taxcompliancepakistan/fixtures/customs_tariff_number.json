@@ -3213,15 +3213,6 @@
   "tariff_number": "2914"
  },
  {
-  "custom_complete_description": "-Acids saturated acyclic monocarboxylic acids and their anhydrides, halides, peroxides and peroxyacids their halogenated, sulphonated, nitrated or nitrosated derivatives",
-  "description": null,
-  "docstatus": 0,
-  "doctype": "Customs Tariff Number",
-  "modified": "2025-02-08 12:27:55.533340",
-  "name": "2915",
-  "tariff_number": "2915"
- },
- {
   "custom_complete_description": "-Acids unsaturated acyclic monocarboxylic, cyclic monocarboxylic , their anhydrides, halides, peroxides and peroxyacids their halogenated, sulphonated, nitrated or nitrosated derivatives",
   "description": null,
   "docstatus": 0,
@@ -11923,6 +11914,15 @@
   "modified": "2025-02-08 12:28:13.759990",
   "name": "8806",
   "tariff_number": "8806"
+ },
+ {
+  "custom_complete_description": "-Acids saturated acyclic monocarboxylic acids and their anhydrides, halides, peroxides and peroxyacids their halogenated, sulphonated, nitrated or nitrosated derivatives",
+  "description": null,
+  "docstatus": 0,
+  "doctype": "Customs Tariff Number",
+  "modified": "2025-02-08 12:27:55.533340",
+  "name": "2915",
+  "tariff_number": "2915"
  },
  {
   "custom_complete_description": "Acids saturated acyclic monocarboxylic acids and their anhydrides, halides, peroxides and peroxyacids their halogenated, sulphonated, nitrated or nitrosated derivatives",
