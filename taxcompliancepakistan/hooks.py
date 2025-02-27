@@ -260,4 +260,6 @@ fixtures = [
         "dt": "FBR Sales Tax Rates",  # Tax Categories are Unique to Tax App
         "filters": []
     },
+    {"dt":"Party Type",
+     "filters": [["name", "in", ["Government"]]]} 
 ]
