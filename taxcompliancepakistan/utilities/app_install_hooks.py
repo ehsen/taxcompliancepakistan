@@ -8,10 +8,7 @@ def create_party_type(party_type, account_type):
     simply better reporting.
     """
     try:
-        if frappe.get_all("Party Type", filters={"name": party_type}):
-            frappe.msgprint(f"Party Type '{party_type}' already exists.", alert=True)
-            
-            return
+        
         
         doc = frappe.get_doc({
             "doctype": "Party Type",
