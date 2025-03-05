@@ -40,7 +40,7 @@ def execute(filters=None):
     data = []
     sales_invoices = frappe.get_all("Sales Invoice", filters=conditions, fields=[
         "name", "customer", "customer_name", "tax_category", "posting_date", "company_address",
-        "custom_customer_st_status"
+        "custom_customer_st_status","is_return"
     ])
     for invoice in sales_invoices:
         company_address_list = frappe.get_list('Address', filters={'is_your_company_address': 1, 'address_type': 'Billing'}, fields=['custom_province'])
@@ -50,7 +50,7 @@ def execute(filters=None):
         customer_address_doc = frappe.get_doc("Address", customer_doc.customer_primary_address)
         customer_province = customer_address_doc.custom_province
         customer_tax_id = customer_doc.tax_id if customer_doc.tax_category == "Registered" else customer_doc.custom_cnic_no
-        
+        is_return = invoice.get('is_return')
         items = frappe.get_all("Sales Invoice Item", filters={"parent": invoice.name}, fields=[
             "custom_hs_code", "item_group", "custom_st_rate", "qty", "uom", "amount", "custom_further_tax", "custom_st"
         ])
@@ -72,24 +72,24 @@ def execute(filters=None):
         for hs_code, values in grouped_items.items():
             item_hs_code_doc = frappe.get_doc("Customs Tariff Number", hs_code)
             fbr_desc = f"{item_hs_code_doc.tariff_number}: {item_hs_code_doc.custom_complete_description}"
-            
+            doc_type = "Credit Note" if is_return==1 else "Sales Invoice"
             data.append({
                 "customer_tax_id": customer_tax_id,
                 "customer_name": invoice.customer,
                 "tax_category": invoice.custom_customer_st_status,
                 "supplier_province": company_province,
                 "customer_province": customer_province,
-                "doc_type": "Sales Invoice",
+                "doc_type": doc_type,
                 "doc_name": invoice.name,
                 "posting_date": invoice.posting_date,
                 "hs_code": fbr_desc,
                 "tax_classification": values["tax_classification"],
                 "sales_tax_rate": values["sales_tax_rate"],
-                "qty": values["qty"],
+                "qty": abs(values["qty"]),
                 "uom": values["uom"],
-                "amount": values["amount"],
-                "further_tax": values["further_tax"],
-                "st_amount": values["st_amount"]
+                "amount": abs(values["amount"]),
+                "further_tax": abs(values["further_tax"]),
+                "st_amount": abs(values["st_amount"])
             })
     
     return columns, data
