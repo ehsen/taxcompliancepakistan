@@ -421,6 +421,19 @@
   "image": null,
   "is_group": 0,
   "item_group_defaults": [],
+  "item_group_name": "Import Charges",
+  "modified": "2024-11-30 12:01:12.058208",
+  "name": "Import Charges",
+  "old_parent": "All Item Groups",
+  "parent_item_group": "All Item Groups",
+  "taxes": []
+ },
+ {
+  "docstatus": 0,
+  "doctype": "Item Group",
+  "image": null,
+  "is_group": 0,
+  "item_group_defaults": [],
   "item_group_name": "Goods at standard rate (default)",
   "modified": "2025-02-14 15:00:01.787634",
   "name": "Goods at standard rate (default)",
@@ -438,19 +451,6 @@
     "valid_from": null
    }
   ]
- },
- {
-  "docstatus": 0,
-  "doctype": "Item Group",
-  "image": null,
-  "is_group": 0,
-  "item_group_defaults": [],
-  "item_group_name": "Import Charges",
-  "modified": "2024-11-30 12:01:12.058208",
-  "name": "Import Charges",
-  "old_parent": "All Item Groups",
-  "parent_item_group": "All Item Groups",
-  "taxes": []
  },
  {
   "docstatus": 0,
