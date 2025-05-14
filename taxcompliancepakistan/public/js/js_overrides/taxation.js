@@ -3,7 +3,6 @@ This will override erpnext default Purchase Invoice Item. We need a set pattern 
 tax purposes, this will calculate ST,AT, Further Tax and any other taxes as per needs.
 */
 
-/*
 function get_company_tax_accounts(company_name, callback) {
     frappe.call({
         method: "frappe.client.get",
@@ -78,6 +77,7 @@ function fetch_item_tax_template(row, callback) {
     }
 }
 
+
 function get_advance_tax_from_template(template_name, callback) {
     // Skip API call if no template is provided
     if (!template_name) {
@@ -88,10 +88,16 @@ function get_advance_tax_from_template(template_name, callback) {
         return;
     }
 
+    // Determine correct template doctype based on parent document
+    let template_doctype = "Purchase Taxes and Charges Template";
+    if (cur_frm.doc.doctype === "Sales Invoice") {
+        template_doctype = "Sales Taxes and Charges Template";
+    }
+
     frappe.call({
         method: "frappe.client.get",
         args: {
-            doctype: "Purchase Taxes and Charges Template",
+            doctype: template_doctype,
             name: template_name
         },
         callback: function(res) {
@@ -200,7 +206,6 @@ function calculate_taxes(frm, row) {
         let qty = row.qty > 0 ? row.qty : 1;
         let base_amount = qty * row.rate;
 
-        // Get multiplier (usually 1 or -1 depending on document type)
         const multiplier = getMultiplier(frm);
 
         if (item_tax_template) {
@@ -219,10 +224,15 @@ function calculate_taxes(frm, row) {
                                 sales_tax += multiplier * (rate.tax_rate * 0.01 * base_amount);
                                 sales_tax_rate += rate.tax_rate;
                             }
-                            if (rate.custom_tax_category === "Further Sales Tax") {
+
+                            // ✅ Apply Further Tax conditionally
+                            if (
+                                rate.custom_tax_category === "Further Sales Tax" &&
+                                frm.doc.doctype === "Sales Invoice" &&
+                                (!frm.doc.custom_customer_st_status || frm.doc.custom_customer_st_status === "Unregistered")
+                            ) {
                                 further_tax += multiplier * (rate.tax_rate * 0.01 * base_amount);
                             }
-                            // Advance Tax intentionally skipped here
                         });
 
                         row.custom_st_rate = sales_tax_rate;
@@ -232,7 +242,6 @@ function calculate_taxes(frm, row) {
                         row.custom_total_incl_tax = multiplier * base_amount + sales_tax + further_tax;
 
                         frm.refresh_field("items");
-                        apply_tax_summary(frm);
                     }
                 }
             });
@@ -243,45 +252,8 @@ function calculate_taxes(frm, row) {
             row.custom_at = 0;
             row.custom_total_incl_tax = multiplier * base_amount;
             frm.refresh_field("items");
-            //apply_tax_summary(frm);
         }
     });
 
-    
+    apply_tax_summary(frm);
 }
-*/
-
-frappe.ui.form.on("Purchase Invoice Item", {
-    
-    
-    item_code: function(frm, cdt, cdn) {
-        const row = locals[cdt][cdn];
-        calculate_taxes(frm, row);
-    },
-qty: function(frm, cdt, cdn) {
-    const row = locals[cdt][cdn];
-    calculate_taxes(frm, row);
-},
-rate: function(frm, cdt, cdn) {
-    const row = locals[cdt][cdn];
-    calculate_taxes(frm, row);
-    
-},
-    
-    
-
-discount_percentage: function(frm, cdt, cdn) {
-    const row = locals[cdt][cdn];
-    calculate_taxes(frm, row);
-}
-});
-
-
-
-frappe.ui.form.on("Purchase Invoice", {
-    custom_tax_template: function(frm) {
-        apply_tax_summary(frm);
-    }
-});
-
-

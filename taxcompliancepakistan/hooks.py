@@ -26,6 +26,8 @@ app_license = "mit"
 
 # include js, css files in header of desk.html
 # app_include_css = "/assets/taxcompliancepakistan/css/taxcompliancepakistan.css"
+app_include_js = "/assets/taxcompliancepakistan/js/js_overrides/taxation.js"
+
 doctype_js = {
     "Purchase Invoice": "public/js/js_overrides/purchase_invoice.js"
 }
