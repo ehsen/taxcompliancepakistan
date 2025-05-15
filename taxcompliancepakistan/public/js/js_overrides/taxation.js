@@ -157,7 +157,9 @@ function apply_tax_summary(frm) {
                         charge_type: "Actual",
                         account_head: accounts.sales_tax_account,
                         description: "Sales Tax (Item Level)",
-                        tax_amount: total_st
+                        tax_amount: total_st,
+                        custom_tax_category: "Sales Tax",
+                        tax_category: "Sales Tax"
                     });
                 }
 
@@ -166,7 +168,9 @@ function apply_tax_summary(frm) {
                         charge_type: "Actual",
                         account_head: accounts.further_tax_account,
                         description: "Further Tax (Item Level)",
-                        tax_amount: total_further_tax
+                        tax_amount: total_further_tax,
+                        custom_tax_category: "Further Sales Tax",
+                        tax_category: "Further Sales Tax"
                     });
                 }
 
@@ -177,7 +181,9 @@ function apply_tax_summary(frm) {
                         charge_type: "Actual",
                         account_head: advance.advance_tax_account,
                         description: "Advance Income Tax (236G)",
-                        tax_amount: advance_tax
+                        tax_amount: advance_tax,
+                        custom_tax_category: "236G",
+                        tax_category: "236G"
                     });
                 }
 
