@@ -197,7 +197,7 @@ function apply_tax_summary(frm) {
                
             });
         });
-    }, 20);
+    }, 100);
 }
 
 function calculate_taxes(frm, row) {
