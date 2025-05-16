@@ -188,16 +188,18 @@ function apply_tax_summary(frm) {
                 }
 
                 // Overwrite ERPNext's tax table with ours
+                
                 frm.set_value("taxes", []);
                 frm.refresh_field("taxes");
 
                 frm.set_value("taxes", tax_summary);
-                frm.refresh_field("taxes");
+                
+                
 
                
             });
         });
-    }, 100);
+    }, 20);
 }
 
 function calculate_taxes(frm, row) {
