@@ -23,6 +23,7 @@ def apply_item_level_tax_summary(doc):
     company = frappe.get_doc("Company", doc.company)
     sales_tax_account = company.get("custom_vat_input") or ""
     further_tax_account = company.get("custom_vat_input") or ""
+    freight_account = company.get("custom_default_freight_expense_account") or ""
 
     # Build tax summary
     tax_summary = []
@@ -70,6 +71,17 @@ def apply_item_level_tax_summary(doc):
             "tax_amount": multiplier * advance_tax,
             "custom_tax_category": "236G",
             "tax_category": "236G"
+        })
+    
+    # Freight Handling
+    if doc.custom_freight_rule == "Paid By Customer" and flt(doc.custom_freight_amount) > 0 and freight_account:
+        tax_summary.append({
+            "charge_type": "Actual",
+            "account_head": freight_account,
+            "description": "Freight (Paid by Customer)",
+            "tax_amount": flt(doc.custom_freight_amount),
+            "custom_tax_category": "Freight",
+            "tax_category": "Freight"
         })
 
     # Apply tax summary to doc
