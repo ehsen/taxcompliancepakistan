@@ -1,0 +1,132 @@
+{
+ "actions": [],
+ "autoname": "naming_series:",
+ "creation": "2025-05-21 10:44:20.608851",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "naming_series",
+  "party_type",
+  "party",
+  "exemption_from_section",
+  "exemption_document_type",
+  "column_break_fjoq",
+  "exemption_document_scan",
+  "company",
+  "valid_from",
+  "valid_upto",
+  "amended_from"
+ ],
+ "fields": [
+  {
+   "fieldname": "party_type",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Party Type",
+   "options": "DocType",
+   "reqd": 1
+  },
+  {
+   "fieldname": "exemption_document_type",
+   "fieldtype": "Select",
+   "label": "Exemption Document Type",
+   "options": "FBR Certificate\nImport GD",
+   "reqd": 1
+  },
+  {
+   "fieldname": "exemption_document_scan",
+   "fieldtype": "Attach",
+   "label": "Exemption Document Scan",
+   "reqd": 1
+  },
+  {
+   "fieldname": "valid_from",
+   "fieldtype": "Date",
+   "label": "Valid From"
+  },
+  {
+   "fieldname": "valid_upto",
+   "fieldtype": "Date",
+   "label": "Valid Upto"
+  },
+  {
+   "fieldname": "party",
+   "fieldtype": "Dynamic Link",
+   "label": "Party",
+   "options": "party_type",
+   "reqd": 1
+  },
+  {
+   "fieldname": "company",
+   "fieldtype": "Link",
+   "label": "Company",
+   "options": "Company",
+   "reqd": 1
+  },
+  {
+   "fieldname": "naming_series",
+   "fieldtype": "Select",
+   "label": "Naming Series",
+   "options": "{party}.-.##"
+  },
+  {
+   "fieldname": "exemption_from_section",
+   "fieldtype": "Link",
+   "label": "Exemption From Section",
+   "options": "WHT Sections",
+   "reqd": 1
+  },
+  {
+   "fieldname": "column_break_fjoq",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "amended_from",
+   "fieldtype": "Link",
+   "label": "Amended From",
+   "no_copy": 1,
+   "options": "WHT Exemption",
+   "print_hide": 1,
+   "read_only": 1,
+   "search_index": 1
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "is_submittable": 1,
+ "links": [],
+ "modified": "2025-05-21 13:02:10.008258",
+ "modified_by": "Administrator",
+ "module": "TaxCompliancePakistan",
+ "name": "WHT Exemption",
+ "naming_rule": "By \"Naming Series\" field",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Accounts Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "track_changes": 1
+}

@@ -155,6 +155,9 @@ doc_events = {
     },
     "Purchase Invoice": {
         "on_update": "taxcompliancepakistan.utilities.tax_overrides.purchase_invoice_on_update"
+    },
+    "Payment Entry": {
+        "on_update": "taxcompliancepakistan.utilities.wht_overrides.on_payment_entry_update"
     }
 }
 

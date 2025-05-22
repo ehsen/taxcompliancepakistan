@@ -1,0 +1,128 @@
+{
+ "actions": [],
+ "autoname": "field:section_name",
+ "creation": "2025-05-19 16:43:21.041535",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "section_name",
+  "effective_from",
+  "section_code",
+  "account_head",
+  "tax_receivable_account_head",
+  "column_break_xiq2",
+  "exemption_code",
+  "tax_payment_nature",
+  "active_tax_payer_rate",
+  "inactive_tax_payer_rate",
+  "section_description"
+ ],
+ "fields": [
+  {
+   "fieldname": "section_name",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Section Name",
+   "reqd": 1,
+   "unique": 1
+  },
+  {
+   "fieldname": "effective_from",
+   "fieldtype": "Date",
+   "in_list_view": 1,
+   "label": "Effective From",
+   "reqd": 1
+  },
+  {
+   "fieldname": "section_code",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Section Code",
+   "reqd": 1
+  },
+  {
+   "fieldname": "column_break_xiq2",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "exemption_code",
+   "fieldtype": "Data",
+   "label": "Exemption Code"
+  },
+  {
+   "fieldname": "tax_payment_nature",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "label": "Tax Payment Nature",
+   "options": "Admitted Income Tax\nAdvance Income Tax\nAdjustable WHT\nFinal WHT\nCVT\nDemanded Income Tax\nMisc",
+   "reqd": 1
+  },
+  {
+   "default": "0",
+   "fieldname": "active_tax_payer_rate",
+   "fieldtype": "Currency",
+   "label": "Active Tax Payer Rate",
+   "reqd": 1
+  },
+  {
+   "default": "0",
+   "fieldname": "inactive_tax_payer_rate",
+   "fieldtype": "Currency",
+   "label": "In Active Tax Payer Rate",
+   "reqd": 1
+  },
+  {
+   "fieldname": "section_description",
+   "fieldtype": "Long Text",
+   "label": "Section Description"
+  },
+  {
+   "fieldname": "account_head",
+   "fieldtype": "Link",
+   "label": "Tax Payable Account Head",
+   "options": "Account"
+  },
+  {
+   "fieldname": "tax_receivable_account_head",
+   "fieldtype": "Link",
+   "label": "Tax Receivable Account Head",
+   "options": "Account"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2025-05-20 17:55:50.119440",
+ "modified_by": "Administrator",
+ "module": "TaxCompliancePakistan",
+ "name": "WHT Sections",
+ "naming_rule": "By fieldname",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Accounts Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}
