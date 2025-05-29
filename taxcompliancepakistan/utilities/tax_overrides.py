@@ -36,7 +36,9 @@ def apply_item_level_tax_summary(doc):
             "description": "Sales Tax (Item Level)",
             "tax_amount": multiplier * sales_tax_total,
             "custom_tax_category": "Sales Tax",
-            "tax_category": "Sales Tax"
+            "tax_category": "Sales Tax",
+            "category":"Total",
+            "add_deduct_tax":"Add"
         })
 
     if further_tax_total and further_tax_account:
@@ -46,7 +48,9 @@ def apply_item_level_tax_summary(doc):
             "description": "Further Tax (Item Level)",
             "tax_amount": multiplier * further_tax_total,
             "custom_tax_category": "Further Sales Tax",
-            "tax_category": "Further Sales Tax"
+            "tax_category": "Further Sales Tax",
+            "category":"Total",
+            "add_deduct_tax":"Add"
         })
 
     # 236G Advance Tax from template
