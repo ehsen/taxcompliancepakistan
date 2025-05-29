@@ -24,7 +24,7 @@ def apply_item_level_tax_summary(doc):
     sales_tax_account = company.get("custom_vat_input") or ""
     further_tax_account = company.get("custom_vat_input") or ""
     freight_account = company.get("custom_default_freight_expense_account") or ""
-    cost_center = company.get("default_cost_center") or ""
+    cost_center = company.get("cost_center") or ""
 
     # Build tax summary
     tax_summary = []
