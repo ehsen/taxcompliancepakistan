@@ -76,16 +76,17 @@ def apply_item_level_tax_summary(doc):
         })
     
     # Freight Handling
-    if doc.custom_freight_rule == "Paid By Customer" and flt(doc.custom_freight_amount) > 0 and freight_account:
-        tax_summary.append({
-            "charge_type": "Actual",
-            "account_head": freight_account,
-            "description": "Freight (Paid by Customer)",
-            "tax_amount": flt(doc.custom_freight_amount),
-            "custom_tax_category": "Freight",
-            "tax_category": "Freight",
-            'cost_center':cost_center
-        })
+    if doc.doctype == "Sales Invoice":
+        if doc.custom_freight_rule == "Paid By Customer" and flt(doc.custom_freight_amount) > 0 and freight_account:
+            tax_summary.append({
+                "charge_type": "Actual",
+                "account_head": freight_account,
+                "description": "Freight (Paid by Customer)",
+                "tax_amount": flt(doc.custom_freight_amount),
+                "custom_tax_category": "Freight",
+                "tax_category": "Freight",
+                'cost_center':cost_center
+            })
 
     # Apply tax summary to doc
     doc.set("taxes", [])
