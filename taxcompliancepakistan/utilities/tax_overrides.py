@@ -76,7 +76,9 @@ def apply_item_level_tax_summary(doc):
             "tax_amount": multiplier * advance_tax,
             "custom_tax_category": "236G",
             "tax_category": "236G",
-            "cost_center":cost_center
+            "cost_center":cost_center,
+            "category":"Total",
+            "add_deduct_tax":"Add"
         })
     
     # Freight Handling
