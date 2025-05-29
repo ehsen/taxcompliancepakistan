@@ -24,6 +24,7 @@ def apply_item_level_tax_summary(doc):
     sales_tax_account = company.get("custom_vat_input") or ""
     further_tax_account = company.get("custom_vat_input") or ""
     freight_account = company.get("custom_default_freight_expense_account") or ""
+    cost_center = company.get("default_cost_center") or ""
 
     # Build tax summary
     tax_summary = []
@@ -70,7 +71,8 @@ def apply_item_level_tax_summary(doc):
             "description": "Advance Income Tax (236G)",
             "tax_amount": multiplier * advance_tax,
             "custom_tax_category": "236G",
-            "tax_category": "236G"
+            "tax_category": "236G",
+            "cost_center":cost_center
         })
     
     # Freight Handling
@@ -81,7 +83,8 @@ def apply_item_level_tax_summary(doc):
             "description": "Freight (Paid by Customer)",
             "tax_amount": flt(doc.custom_freight_amount),
             "custom_tax_category": "Freight",
-            "tax_category": "Freight"
+            "tax_category": "Freight",
+            'cost_center':cost_center
         })
 
     # Apply tax summary to doc
