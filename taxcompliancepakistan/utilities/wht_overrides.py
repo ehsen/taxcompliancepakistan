@@ -83,7 +83,7 @@ def update_advance_taxes_and_charges(doc, wht_summary, sections_map, payment_typ
         tax_row.add_deduct_tax = "Deduct"
         tax_row.account_head = account_head
         tax_row.description = section_name
-        tax_row.tax_amount = total_wht
+        tax_row.tax_amount = int(total_wht)
 
 
 ## Hooks that will be executed when a payment entry is saved
@@ -94,3 +94,4 @@ def on_payment_entry_update(doc, method):
 
     calculate_withholding_tax(doc)
     doc.calculate_taxes()
+    
