@@ -24,9 +24,10 @@ def apply_item_level_tax_summary(doc):
     sales_tax_account = company.get("custom_vat_input") or ""
     further_tax_account = company.get("custom_vat_input") or ""
     freight_account = company.get("custom_default_freight_expense_account") or ""
+    freight_on_purchase_account = company.get("custom_freight_on_purchase_account") or ""
     cost_center = company.get("cost_center") or ""
 
-    # Build tax summary
+    # Build tax summary, removing decimal places from tax amounts
     tax_summary = []
 
     if sales_tax_total and sales_tax_account:
@@ -34,7 +35,7 @@ def apply_item_level_tax_summary(doc):
             "charge_type": "Actual",
             "account_head": sales_tax_account,
             "description": "Sales Tax (Item Level)",
-            "tax_amount": multiplier * sales_tax_total,
+            "tax_amount": int(multiplier * sales_tax_total),
             "custom_tax_category": "Sales Tax",
             "tax_category": "Sales Tax",
             "category":"Total",
@@ -46,7 +47,7 @@ def apply_item_level_tax_summary(doc):
             "charge_type": "Actual",
             "account_head": further_tax_account,
             "description": "Further Tax (Item Level)",
-            "tax_amount": multiplier * further_tax_total,
+            "tax_amount": int(multiplier * further_tax_total),
             "custom_tax_category": "Further Sales Tax",
             "tax_category": "Further Sales Tax",
             "category":"Total",
@@ -68,7 +69,7 @@ def apply_item_level_tax_summary(doc):
                 break
 
     if advance_tax_rate and advance_tax_account:
-        advance_tax = advance_tax_rate * 0.01 * total_inclusive
+        advance_tax = int(advance_tax_rate * 0.01 * total_inclusive)
         tax_summary.append({
             "charge_type": "Actual",
             "account_head": advance_tax_account,
@@ -88,10 +89,23 @@ def apply_item_level_tax_summary(doc):
                 "charge_type": "Actual",
                 "account_head": freight_account,
                 "description": "Freight (Paid by Customer)",
-                "tax_amount": flt(doc.custom_freight_amount),
+                "tax_amount": int(flt(doc.custom_freight_amount)),
                 "custom_tax_category": "Freight",
                 "tax_category": "Freight",
                 'cost_center':cost_center
+            })
+    elif doc.doctype == "Purchase Invoice":
+        if flt(doc.custom_freight_amount) > 0 and freight_on_purchase_account:
+            tax_summary.append({
+                "charge_type": "Actual",
+                "account_head": freight_on_purchase_account,
+                "description": "Freight (Paid by {company_name})".format(company_name=doc.name),
+                "tax_amount": int(flt(doc.custom_freight_amount)),
+                "custom_tax_category": "Freight",
+                "tax_category": "Freight",
+                'cost_center':cost_center,
+                "category":"Total",
+                "add_deduct_tax":"Add"
             })
 
     # Apply tax summary to doc
