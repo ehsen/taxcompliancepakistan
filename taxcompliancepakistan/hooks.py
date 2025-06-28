@@ -259,7 +259,9 @@ doc_events = {
 # }
 
 # Fixtures
+"""
 fixtures = [
+    
     {
         "dt": "Customs Tariff Number",  # Export all custom fields
         "filters": []
@@ -279,3 +281,4 @@ fixtures = [
     {"dt":"Party Type",
      "filters": [["name", "in", ["Government"]]]} 
 ]
+"""
