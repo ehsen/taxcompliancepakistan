@@ -166,6 +166,33 @@ def execute(filters=None):
                 "further_tax": abs(values["further_tax"]),
                 "st_amount": abs(values["st_amount"])
             })
+    
+        # Calculate totals
+    total_qty = sum(d["qty"] for d in data)
+    total_amount = sum(d["amount"] for d in data)
+    total_further_tax = sum(d["further_tax"] for d in data)
+    total_st_amount = sum(d["st_amount"] for d in data)
+
+    # Append totals row
+    data.append({
+        "customer_tax_id": "",
+        "customer_name": "",
+        "tax_category": "Total",
+        "supplier_province": "",
+        "customer_province": "",
+        "doc_type": "",
+        "doc_name": "",
+        "posting_date": "",
+        "hs_code": "",
+        "tax_classification": "",
+        "sales_tax_rate": "",
+        "qty": total_qty,
+        "uom": "",
+        "amount": total_amount,
+        "further_tax": total_further_tax,
+        "st_amount": total_st_amount
+    })
+
 
     # ----------------------------
     # Report Totals (Summary Bar)
@@ -175,9 +202,9 @@ def execute(filters=None):
     total_further_tax = sum(row["further_tax"] for row in data)
 
     report_summary = [
-        {"label": "Total Amount", "value": total_amount, "indicator": "Green"},
-        {"label": "Total ST Amount", "value": total_st_amount, "indicator": "Blue"},
-        {"label": "Total Further Tax", "value": total_further_tax, "indicator": "Orange"}
+        {"label": "Total Amount", "value": round(total_amount,0), "indicator": "Green"},
+        {"label": "Total ST Amount", "value": round(total_st_amount,0), "indicator": "Blue"},
+        {"label": "Total Further Tax", "value": round(total_further_tax,0), "indicator": "Orange"}
     ]
 
     return columns, data, None, None, report_summary
