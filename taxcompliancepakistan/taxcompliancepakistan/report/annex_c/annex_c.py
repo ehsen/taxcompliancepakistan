@@ -49,7 +49,7 @@ def execute(filters=None):
         customer_doc = frappe.get_doc("Customer", invoice.customer)
         customer_address_doc = frappe.get_doc("Address", customer_doc.customer_primary_address)
         customer_province = customer_address_doc.custom_province
-        customer_tax_id = customer_doc.tax_id if customer_doc.tax_category == "Registered" else customer_doc.custom_cnic_no
+        customer_tax_id = customer_doc.tax_id if customer_doc.tax_category == ("Registered" or "Registered Customers") else customer_doc.custom_cnic_no
         is_return = invoice.get('is_return')
         items = frappe.get_all("Sales Invoice Item", filters={"parent": invoice.name}, fields=[
             "custom_hs_code", "item_group", "custom_st_rate", "qty", "uom", "amount", "custom_further_tax", "custom_st"
@@ -73,10 +73,14 @@ def execute(filters=None):
             item_hs_code_doc = frappe.get_doc("Customs Tariff Number", hs_code)
             fbr_desc = f"{item_hs_code_doc.tariff_number}: {item_hs_code_doc.custom_complete_description}"
             doc_type = "Credit Note" if is_return==1 else "Sales Invoice"
+            tax_category_value = invoice.custom_customer_st_status
+            if tax_category_value == "Registered Customers":
+                tax_category_value = "Registered"
+            
             data.append({
                 "customer_tax_id": customer_tax_id,
                 "customer_name": invoice.customer,
-                "tax_category": invoice.custom_customer_st_status,
+                "tax_category": tax_category_value,
                 "supplier_province": company_province,
                 "customer_province": customer_province,
                 "doc_type": doc_type,
