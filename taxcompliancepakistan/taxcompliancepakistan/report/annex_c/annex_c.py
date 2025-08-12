@@ -1,5 +1,5 @@
 import frappe
-from frappe.utils import flt
+from frappe.utils import flt,fmt_money
 
 def execute(filters=None):
     # ----------------------------
@@ -174,6 +174,7 @@ def execute(filters=None):
     total_st_amount = sum(d["st_amount"] for d in data)
 
     # Append totals row
+    
     data.append({
         "customer_tax_id": "",
         "customer_name": "",
@@ -191,20 +192,19 @@ def execute(filters=None):
         "amount": total_amount,
         "further_tax": total_further_tax,
         "st_amount": total_st_amount
+        
     })
 
 
     # ----------------------------
     # Report Totals (Summary Bar)
     # ----------------------------
-    total_amount = sum(row["amount"] for row in data)
-    total_st_amount = sum(row["st_amount"] for row in data)
-    total_further_tax = sum(row["further_tax"] for row in data)
+    
 
     report_summary = [
-        {"label": "Total Amount", "value": round(total_amount,0), "indicator": "Green"},
-        {"label": "Total ST Amount", "value": round(total_st_amount,0), "indicator": "Blue"},
-        {"label": "Total Further Tax", "value": round(total_further_tax,0), "indicator": "Orange"}
+        {"label": "Total Amount", "value": fmt_money(round(total_amount,0)), "indicator": "Green"},
+        {"label": "Total ST Amount", "value": fmt_money(round(total_st_amount,0)), "indicator": "Blue"},
+        {"label": "Total Further Tax", "value": fmt_money(round(total_further_tax,0)), "indicator": "Orange"}
     ]
 
     return columns, data, None, None, report_summary
