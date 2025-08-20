@@ -35,7 +35,7 @@ def apply_item_level_tax_summary(doc):
             "charge_type": "Actual",
             "account_head": sales_tax_account,
             "description": "Sales Tax (Item Level)",
-            "tax_amount": int(multiplier * sales_tax_total),
+            "tax_amount": multiplier * sales_tax_total,
             "custom_tax_category": "Sales Tax",
             "tax_category": "Sales Tax",
             "category":"Total",
@@ -47,7 +47,7 @@ def apply_item_level_tax_summary(doc):
             "charge_type": "Actual",
             "account_head": further_tax_account,
             "description": "Further Tax (Item Level)",
-            "tax_amount": int(multiplier * further_tax_total),
+            "tax_amount": multiplier * further_tax_total,
             "custom_tax_category": "Further Sales Tax",
             "tax_category": "Further Sales Tax",
             "category":"Total",
@@ -69,7 +69,7 @@ def apply_item_level_tax_summary(doc):
                 break
 
     if advance_tax_rate and advance_tax_account:
-        advance_tax = int(advance_tax_rate * 0.01 * total_inclusive)
+        advance_tax = advance_tax_rate * 0.01 * total_inclusive
         tax_summary.append({
             "charge_type": "Actual",
             "account_head": advance_tax_account,
