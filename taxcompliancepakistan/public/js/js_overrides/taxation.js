@@ -27,11 +27,11 @@ function calculate_row_tax_totals(frm) {
     let total_st = 0;
     let total_further_tax = 0;
     let total_inclusive = 0;
-
+    let precision = precision("currency");
     (frm.doc.items || []).forEach(row => {
-        total_st += flt(row.custom_st || 0);
-        total_further_tax += flt(row.custom_further_tax || 0);
-        total_inclusive += flt(row.custom_total_incl_tax || 0);
+        total_st += flt(row.custom_st || 0,precision);
+        total_further_tax += flt(row.custom_further_tax || 0,precision);
+        total_inclusive += flt(row.custom_total_incl_tax || 0,precision);
     });
 
     console.log(`[calculate_row_tax_totals] Total ST: ${total_st}, Total Further Tax: ${total_further_tax}, Total Inclusive: ${total_inclusive}`);
