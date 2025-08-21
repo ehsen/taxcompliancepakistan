@@ -27,7 +27,8 @@ function calculate_row_tax_totals(frm) {
     let total_st = 0;
     let total_further_tax = 0;
     let total_inclusive = 0;
-    let precision = precision("currency");
+    let precision = frappe.boot.sysdefaults.currency_precision || 2;
+    
     (frm.doc.items || []).forEach(row => {
         total_st += flt(row.custom_st || 0,precision);
         total_further_tax += flt(row.custom_further_tax || 0,precision);
