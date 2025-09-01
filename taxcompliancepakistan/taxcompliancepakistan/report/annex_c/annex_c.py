@@ -139,7 +139,9 @@ def execute(filters=None):
                 try:
                     hs_code = frappe.get_cached_doc("Customs Tariff Number", it.custom_hs_code).custom_complete_description
                 except frappe.DoesNotExistError:
-                    hs_code = None
+                    # Fallback from Item Master (In Case User forget to set HS Code intially)
+                    hs_code = frappe.get_cached_doc("Item",it.item_code).customs_tariff_number
+                    
             
             if hs_code not in grouped_items:
                 grouped_items[hs_code] = {
