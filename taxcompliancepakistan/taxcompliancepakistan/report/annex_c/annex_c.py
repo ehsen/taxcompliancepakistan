@@ -137,7 +137,7 @@ def execute(filters=None):
             hs_code = None
             if it.custom_hs_code:
                 try:
-                    hs_code = frappe.get_cached_doc("Customs Tariff Number", it.custom_hs_code).description
+                    hs_code = frappe.get_cached_doc("Customs Tariff Number", it.custom_hs_code).custom_complete_description
                 except frappe.DoesNotExistError:
                     hs_code = None
             
