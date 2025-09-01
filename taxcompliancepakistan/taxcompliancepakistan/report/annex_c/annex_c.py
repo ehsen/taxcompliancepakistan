@@ -134,7 +134,13 @@ def execute(filters=None):
         invoice_items = [it for it in items if it.parent == inv.name]
         grouped_items = {}
         for it in invoice_items:
-            hs_code = it.custom_hs_code
+            hs_code = None
+            if it.custom_hs_code:
+                try:
+                    hs_code = frappe.get_cached_doc("Customs Tariff Number", it.custom_hs_code).description
+                except frappe.DoesNotExistError:
+                    hs_code = None
+            
             if hs_code not in grouped_items:
                 grouped_items[hs_code] = {
                     "qty": 0, "amount": 0, "further_tax": 0,
@@ -175,6 +181,7 @@ def execute(filters=None):
 
     # Append totals row
     
+    """
     data.append({
         "customer_tax_id": "",
         "customer_name": "",
@@ -194,7 +201,7 @@ def execute(filters=None):
         "st_amount": total_st_amount
         
     })
-
+    """
 
     # ----------------------------
     # Report Totals (Summary Bar)
