@@ -14,7 +14,7 @@ function get_company_tax_accounts(company_name, callback) {
             if (res.message) {
                 callback({
                     sales_tax_account: res.message.custom_vat_input || "",
-                    further_tax_account: res.message.custom_vat_input || "" // Same as ST
+                    further_tax_account: res.message.custom_further_sales_tax_account || "" // Same as ST
                 });
             } else {
                 callback({});

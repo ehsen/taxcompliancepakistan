@@ -22,7 +22,7 @@ def apply_item_level_tax_summary(doc):
     # Get account heads from Company
     company = frappe.get_doc("Company", doc.company)
     sales_tax_account = company.get("custom_vat_input") or ""
-    further_tax_account = company.get("custom_vat_input") or ""
+    further_tax_account = company.get("custom_further_sales_tax_account") or ""
     freight_account = company.get("custom_default_freight_expense_account") or ""
     freight_on_purchase_account = company.get("custom_freight_on_purchase_account") or ""
     cost_center = company.get("cost_center") or ""
