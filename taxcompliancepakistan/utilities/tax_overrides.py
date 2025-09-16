@@ -119,9 +119,9 @@ def sales_invoice_on_update(doc, method=None):
     if isinstance(doc, str):
         doc = frappe.get_doc("Sales Invoice", doc)
         
-
-    apply_item_level_tax_summary(doc)
-    doc.calculate_taxes_and_totals()
+    if doc.custom_sales_tax_invoice == 1:
+        apply_item_level_tax_summary(doc)
+        doc.calculate_taxes_and_totals()
     #doc.save(ignore_permissions=True)  # Optional: if needed to persist changes
 
 
@@ -129,6 +129,7 @@ def purchase_invoice_on_update(doc, method=None):
     if isinstance(doc, str):
         doc = frappe.get_doc("Purchase Invoice", doc)
 
-    apply_item_level_tax_summary(doc)
-    doc.calculate_taxes_and_totals()
+    if doc.custom_sales_tax_invoice == 1:
+        apply_item_level_tax_summary(doc)
+        doc.calculate_taxes_and_totals()
     #doc.save(ignore_permissions=True)
