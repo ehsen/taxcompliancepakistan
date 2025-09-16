@@ -151,7 +151,7 @@ doctype_js = {
 
 doc_events = {
     "Sales Invoice": {
-        "on_update": "taxcompliancepakistan.utilities.tax_overrides.sales_invoice_on_update"
+        "on_save": "taxcompliancepakistan.utilities.tax_overrides.sales_invoice_on_update"
     },
     "Purchase Invoice": {
         "on_update": "taxcompliancepakistan.utilities.tax_overrides.purchase_invoice_on_update"
