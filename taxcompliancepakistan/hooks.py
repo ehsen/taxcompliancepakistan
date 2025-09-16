@@ -259,26 +259,20 @@ doc_events = {
 # }
 
 # Fixtures
-"""
+
 fixtures = [
+    {
+        "dt": "Custom Field",  # DocType for the fixture
+        "filters": [
+            ["module", "=", "TaxCompliancePakistan"]  # Only include fields from this module
+        ]
+    },
+     {
+        "dt": "Property Setter",  # DocType for the fixture
+        "filters": [
+            ["module", "=", "TaxCompliancePakistan"]  # Only include fields from this module
+        ]
+    },
     
-    {
-        "dt": "Customs Tariff Number",  # Export all custom fields
-        "filters": []
-    },
-    {
-        "dt": "Tax Category",  # Tax Categories are Unique to Tax App
-        "filters": []
-    },
-    {
-        "dt": "Item Group",  # Tax Categories are Unique to Tax App
-        "filters": []
-    },
-    {
-        "dt": "FBR Sales Tax Rates",  # Tax Categories are Unique to Tax App
-        "filters": []
-    },
-    {"dt":"Party Type",
-     "filters": [["name", "in", ["Government"]]]} 
+   
 ]
-"""
