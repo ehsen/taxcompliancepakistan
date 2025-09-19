@@ -7,6 +7,10 @@ def calculate_withholding_tax(payment_entry):
     # Initialize default_wht_template to None
     default_wht_template = None
 
+    # Only apply WHT logic for Supplier/Customer payments. Skip for Employee and others.
+    if getattr(payment_entry, "party_type", None) not in ("Supplier", "Customer"):
+        return
+
     if payment_entry.party_type == "Supplier":
         supplier = frappe.get_doc("Supplier", payment_entry.party)
         default_wht_template = supplier.get("custom_default_wht_template")
@@ -35,7 +39,9 @@ def calculate_withholding_tax(payment_entry):
         if not section:
             continue
 
-        rate = get_applicable_rate(section, payment_entry.custom_party_fbr_status)
+        # Guard against missing custom field on variants like EmployeePaymentEntry
+        fbr_status = getattr(payment_entry, "custom_party_fbr_status", None)
+        rate = get_applicable_rate(section, fbr_status)
         if not rate:
             continue
 
