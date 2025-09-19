@@ -76,13 +76,13 @@ def get_applicable_rate(section, fbr_status):
 
 def update_advance_taxes_and_charges(doc, wht_summary, sections_map, payment_type):
     doc.set("taxes", [])  # Clear existing rows if any
-
+    frappe.log_error(message=f"{wht_summary} ",title="WHT")
     for section_name, total_wht in wht_summary.items():
         section = sections_map.get(section_name)
         if not section:
             continue
 
-        account_head = section.tax_receivable_account_head if payment_type == "Receive" else section.account_head
+        account_head = section.tax_receivable_account_head if payment_type == "Pay" else section.account_head
 
         tax_row = doc.append("taxes", {})
         tax_row.charge_type = "Actual"
