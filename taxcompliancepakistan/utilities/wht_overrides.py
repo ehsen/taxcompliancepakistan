@@ -52,6 +52,7 @@ def calculate_withholding_tax(payment_entry):
         wht_amount = ref.allocated_amount * (rate / 100.0)
         frappe.log_error(message=f"allocated amount is {ref.allocated_amount} wht {wht_amount}",title=f"WHT Detail")
         ref.custom_wht_amount = wht_amount
+        ref.custom_wht_rate = rate or 0
 
         wht_summary[section_name] += wht_amount
 
