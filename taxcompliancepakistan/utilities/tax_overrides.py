@@ -116,20 +116,123 @@ def apply_item_level_tax_summary(doc):
     return tax_summary
 
 def sales_invoice_on_update(doc, method=None):
-    if isinstance(doc, str):
-        doc = frappe.get_doc("Sales Invoice", doc)
-        
-    if doc.custom_sales_tax_invoice == 1:
+    
         apply_item_level_tax_summary(doc)
         doc.calculate_taxes_and_totals()
     #doc.save(ignore_permissions=True)  # Optional: if needed to persist changes
 
 
 def purchase_invoice_on_update(doc, method=None):
-    if isinstance(doc, str):
-        doc = frappe.get_doc("Purchase Invoice", doc)
-
-    if doc.custom_sales_tax_invoice == 1:
-        apply_item_level_tax_summary(doc)
-        doc.calculate_taxes_and_totals()
+        
+    apply_item_level_tax_summary(doc)
+    doc.calculate_taxes_and_totals()
     #doc.save(ignore_permissions=True)
+
+
+def payment_entry_build_gl_map(doc, method=None):
+    """
+    Override for Payment Entry build_gl_map function.
+    Fixes the issue where bank entries include tax amounts, causing debit/credit mismatch.
+    
+    Solution:
+    1. Bank entries are reduced by tax amounts (clean bank entries)
+    2. Tax counter entries are NOT created (avoid double-counting)
+    3. Tax amounts are only accounted in tax accounts
+    """
+    import erpnext
+    from erpnext.accounts.doctype.payment_entry.payment_entry import get_account_currency
+    from frappe.utils import flt
+    
+    if doc.payment_type in ("Receive", "Pay") and not doc.get("party_account_field"):
+        doc.setup_party_account_field()
+
+    company_currency = erpnext.get_company_currency(doc.company)
+    if doc.paid_from_account_currency != company_currency:
+        doc.currency = doc.paid_from_account_currency
+    elif doc.paid_to_account_currency != company_currency:
+        doc.currency = doc.paid_to_account_currency
+
+    gl_entries = []
+    doc.add_party_gl_entries(gl_entries)
+    
+    # Custom bank GL entries - reduced by tax amounts
+    if doc.payment_type in ("Pay", "Internal Transfer"):
+        # Reduce bank entry by tax amount to balance with tax entries
+        bank_amount = flt(doc.paid_amount) - flt(doc.total_taxes_and_charges)
+        base_bank_amount = flt(doc.base_paid_amount) - flt(doc.base_total_taxes_and_charges)
+        
+        gl_entries.append(
+            doc.get_gl_dict(
+                {
+                    "account": doc.paid_from,
+                    "account_currency": doc.paid_from_account_currency,
+                    "against": doc.party if doc.payment_type == "Pay" else doc.paid_to,
+                    "credit_in_account_currency": bank_amount,
+                    "credit": base_bank_amount,
+                    "cost_center": doc.cost_center,
+                    "post_net_value": True,
+                },
+                item=doc,
+            )
+        )
+        
+    if doc.payment_type in ("Receive", "Internal Transfer"):
+        # Reduce bank entry by tax amount to balance with tax entries
+        bank_amount = flt(doc.received_amount) - flt(doc.total_taxes_and_charges)
+        base_bank_amount = flt(doc.base_received_amount) - flt(doc.base_total_taxes_and_charges)
+        
+        gl_entries.append(
+            doc.get_gl_dict(
+                {
+                    "account": doc.paid_to,
+                    "account_currency": doc.paid_to_account_currency,
+                    "against": doc.party if doc.payment_type == "Receive" else doc.paid_from,
+                    "debit_in_account_currency": bank_amount,
+                    "debit": base_bank_amount,
+                    "cost_center": doc.cost_center,
+                },
+                item=doc,
+            )
+        )
+    
+    doc.add_deductions_gl_entries(gl_entries)
+    
+    # Custom tax GL entries - only tax account entries, NO counter entries
+    for d in doc.get("taxes"):
+        account_currency = get_account_currency(d.account_head)
+        if account_currency != doc.company_currency:
+            frappe.throw(frappe._("Currency for {0} must be {1}").format(d.account_head, doc.company_currency))
+
+        if doc.payment_type in ("Pay", "Internal Transfer"):
+            dr_or_cr = "debit" if d.add_deduct_tax == "Add" else "credit"
+            against = doc.party or doc.paid_from
+        elif doc.payment_type == "Receive":
+            dr_or_cr = "credit" if d.add_deduct_tax == "Add" else "debit"
+            against = doc.party or doc.paid_to
+
+        tax_amount = d.tax_amount
+        base_tax_amount = d.base_tax_amount
+
+        # Add tax account entry only - NO counter entry
+        gl_entries.append(
+            doc.get_gl_dict(
+                {
+                    "account": d.account_head,
+                    "against": against,
+                    dr_or_cr: tax_amount,
+                    dr_or_cr + "_in_account_currency": base_tax_amount
+                    if account_currency == doc.company_currency
+                    else d.tax_amount,
+                    "cost_center": d.cost_center,
+                    "post_net_value": True,
+                },
+                account_currency,
+                item=d,
+            )
+        )
+    
+    # Add regional GL entries
+    from erpnext.accounts.doctype.payment_entry.payment_entry import add_regional_gl_entries
+    add_regional_gl_entries(gl_entries, doc)
+    
+    return gl_entries

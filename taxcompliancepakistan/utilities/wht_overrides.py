@@ -44,14 +44,14 @@ def calculate_withholding_tax(payment_entry):
 
         # Guard against missing custom field on variants like EmployeePaymentEntry
         fbr_status = getattr(payment_entry, "custom_party_fbr_status", None)
-        print(f"fbr statsu {fbr_status}")
+        
         rate = get_applicable_rate(section, fbr_status)
         if not rate:
             continue
 
         wht_amount = ref.allocated_amount * (rate / 100.0)
-        frappe.log_error(message=f"allocated amount is {ref.allocated_amount} wht {wht_amount}",title=f"WHT Detail")
         ref.custom_wht_amount = wht_amount
+        ref.custom_wht_rate = rate or 0
 
         wht_summary[section_name] += wht_amount
 

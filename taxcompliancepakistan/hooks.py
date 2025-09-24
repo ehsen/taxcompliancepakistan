@@ -193,6 +193,11 @@ doc_events = {
 # override_whitelisted_methods = {
 # 	"frappe.desk.doctype.event.event.get_events": "taxcompliancepakistan.event.get_events"
 # }
+
+# Override Payment Entry build_gl_map method
+override_whitelisted_methods = {
+    "erpnext.accounts.doctype.payment_entry.payment_entry.PaymentEntry.build_gl_map": "taxcompliancepakistan.utilities.tax_overrides.payment_entry_build_gl_map"
+}
 #
 # each overriding function accepts a `data` argument;
 # generated from the base implementation of the doctype dashboard,

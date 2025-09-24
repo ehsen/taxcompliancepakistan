@@ -225,9 +225,7 @@ function calculate_taxes(frm, row) {
         return;
     }
 
-    if(frm.doc.custom_sales_tax_invoice === 0){
-        return;
-    }
+   
 
     console.log(`[calculate_taxes] Starting calculation for item: ${row.item_code}`);
 
