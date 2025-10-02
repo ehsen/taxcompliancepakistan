@@ -84,7 +84,7 @@ def apply_item_level_tax_summary(doc):
     
     # Preserve manually added 236G rows for Purchase Invoice
     if doc.doctype == "Purchase Invoice":
-        for tax_row in doc.get("taxes", []):
+        for tax_row in doc.get("taxes", []): 
             if tax_row.custom_tax_category == "236G":
                 tax_summary.append({
                     "charge_type": tax_row.charge_type,
