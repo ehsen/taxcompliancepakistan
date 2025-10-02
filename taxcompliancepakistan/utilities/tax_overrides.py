@@ -92,7 +92,7 @@ def apply_item_level_tax_summary(doc):
                     "description": tax_row.description,
                     "tax_amount": tax_row.tax_amount,
                     "custom_tax_category": tax_row.custom_tax_category,
-                    "tax_category": tax_row.tax_category,
+                    "tax_category": tax_row.custom_tax_category,
                     "cost_center": tax_row.cost_center or cost_center,
                     "category": tax_row.category or "Total",
                     "add_deduct_tax": tax_row.add_deduct_tax or "Add",
