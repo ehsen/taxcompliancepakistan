@@ -160,6 +160,25 @@ function apply_tax_summary(frm) {
     get_company_tax_accounts(frm.doc.company, (accounts) => {
         get_advance_tax_from_template(frm.doc.custom_tax_template, (advance) => {
             
+            // Preserve manually added 236G rows for Purchase Invoice
+            let preserved_236g_rows = [];
+            if (frm.doc.doctype === "Purchase Invoice") {
+                (frm.doc.taxes || []).forEach(tax => {
+                    if (tax.custom_tax_category === "236G" || tax.tax_category === "236G") {
+                        preserved_236g_rows.push({
+                            charge_type: tax.charge_type,
+                            account_head: tax.account_head,
+                            description: tax.description,
+                            tax_amount: tax.tax_amount,
+                            custom_tax_category: tax.custom_tax_category,
+                            tax_category: tax.tax_category,
+                            cost_center: tax.cost_center,
+                            rate: tax.rate
+                        });
+                    }
+                });
+            }
+            
             // Clear old tax rows
             frm.clear_table("taxes");
 
@@ -187,18 +206,32 @@ function apply_tax_summary(frm) {
                 });
             }
 
-            let advance_tax = (advance.advance_tax_rate || 0) * 0.01 * total_inclusive;
+            // Only apply 236G automatically for Sales Invoice, not Purchase Invoice
+            let advance_tax = 0;
+            if (frm.doc.doctype === "Sales Invoice") {
+                advance_tax = (advance.advance_tax_rate || 0) * 0.01 * total_inclusive;
 
-            if (advance_tax && advance.advance_tax_account) {
-                let row = frm.add_child("taxes");
-                Object.assign(row, {
-                    charge_type: "Actual",
-                    account_head: advance.advance_tax_account,
-                    description: "Advance Income Tax (236G)",
-                    tax_amount: advance_tax,
-                    custom_tax_category: "236G",
-                    tax_category: "236G"
+                if (advance_tax && advance.advance_tax_account) {
+                    let row = frm.add_child("taxes");
+                    Object.assign(row, {
+                        charge_type: "Actual",
+                        account_head: advance.advance_tax_account,
+                        description: "Advance Income Tax (236G)",
+                        tax_amount: advance_tax,
+                        custom_tax_category: "236G",
+                        tax_category: "236G"
+                    });
+                }
+            }
+
+            // Re-add preserved 236G rows for Purchase Invoice
+            if (frm.doc.doctype === "Purchase Invoice" && preserved_236g_rows.length > 0) {
+                preserved_236g_rows.forEach(preserved_row => {
+                    let row = frm.add_child("taxes");
+                    Object.assign(row, preserved_row);
+                    advance_tax += flt(preserved_row.tax_amount || 0);
                 });
+                console.log(`[apply_tax_summary] Restored ${preserved_236g_rows.length} manually added 236G row(s)`);
             }
 
             // Update UI instantly
@@ -222,6 +255,31 @@ function apply_tax_summary(frm) {
 
 function calculate_taxes(frm, row) {
     if (frm.doc.custom_purchase_invoice_type === "Import") {
+        return;
+    }
+
+    if (frm.doc.custom_supplier_st_status === "Unregistered") {
+        console.log(`[calculate_taxes] Skipping calculation for item: ${row.item_code} because supplier is unregistered`);
+        
+        // Clear all tax fields for unregistered supplier
+        let qty = row.qty > 0 ? row.qty : 1;
+        let base_amount = qty * row.rate;
+        const multiplier = getMultiplier(frm);
+        
+        row.custom_st_rate = 0;
+        row.custom_st = 0;
+        row.custom_further_tax = 0;
+        row.custom_at = 0;
+        row.custom_total_incl_tax = multiplier * base_amount;
+        
+        frm.refresh_field("items");
+        
+        // Call apply_tax_summary to recalculate taxes table
+        setTimeout(() => {
+            console.log(`[calculate_taxes] Calling apply_tax_summary after clearing taxes for unregistered supplier`);
+            apply_tax_summary(frm);
+        }, 50);
+        
         return;
     }
 
