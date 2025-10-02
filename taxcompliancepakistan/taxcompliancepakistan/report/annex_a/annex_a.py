@@ -44,8 +44,16 @@ def execute(filters=None):
         company_province = company_address_list[0].get('custom_province') if company_address_list else None
         
         supplier_doc = frappe.get_doc("Supplier", invoice.supplier)
-        supplier_address_doc = frappe.get_doc("Address", supplier_doc.supplier_primary_address)
-        supplier_province = supplier_address_doc.custom_province
+        
+        # Handle missing supplier address gracefully
+        supplier_province = None
+        if supplier_doc.supplier_primary_address:
+            try:
+                supplier_address_doc = frappe.get_doc("Address", supplier_doc.supplier_primary_address)
+                supplier_province = supplier_address_doc.get('custom_province')
+            except Exception:
+                supplier_province = None
+        
         supplier_tax_id = supplier_doc.tax_id if supplier_doc.tax_category == "Registered" else supplier_doc.custom_cnic_no
         is_return = invoice.get('is_return')
         

@@ -54,13 +54,13 @@ def apply_item_level_tax_summary(doc):
             "add_deduct_tax":"Add"
         })
 
-    # 236G Advance Tax from template
+    # 236G Advance Tax from template - Only for Sales Invoice, not Purchase Invoice
     advance_tax = 0
     advance_tax_account = ""
     advance_tax_rate = 0
 
-    if doc.custom_tax_template:
-        template_doctype = "Sales Taxes and Charges Template" if doc.doctype == "Sales Invoice" else "Purchase Taxes and Charges Template"
+    if doc.doctype == "Sales Invoice" and doc.custom_tax_template:
+        template_doctype = "Sales Taxes and Charges Template"
         template = frappe.get_doc(template_doctype, doc.custom_tax_template)
         for row in template.get("taxes", []):
             if row.custom_tax_category == "236G":
@@ -68,19 +68,36 @@ def apply_item_level_tax_summary(doc):
                 advance_tax_account = row.account_head
                 break
 
-    if advance_tax_rate and advance_tax_account:
-        advance_tax = advance_tax_rate * 0.01 * total_inclusive
-        tax_summary.append({
-            "charge_type": "Actual",
-            "account_head": advance_tax_account,
-            "description": "Advance Income Tax (236G)",
-            "tax_amount": multiplier * advance_tax,
-            "custom_tax_category": "236G",
-            "tax_category": "236G",
-            "cost_center":cost_center,
-            "category":"Total",
-            "add_deduct_tax":"Add"
-        })
+        if advance_tax_rate and advance_tax_account:
+            advance_tax = advance_tax_rate * 0.01 * total_inclusive
+            tax_summary.append({
+                "charge_type": "Actual",
+                "account_head": advance_tax_account,
+                "description": "Advance Income Tax (236G)",
+                "tax_amount": multiplier * advance_tax,
+                "custom_tax_category": "236G",
+                "tax_category": "236G",
+                "cost_center":cost_center,
+                "category":"Total",
+                "add_deduct_tax":"Add"
+            })
+    
+    # Preserve manually added 236G rows for Purchase Invoice
+    if doc.doctype == "Purchase Invoice":
+        for tax_row in doc.get("taxes", []):
+            if tax_row.custom_tax_category == "236G":
+                tax_summary.append({
+                    "charge_type": tax_row.charge_type,
+                    "account_head": tax_row.account_head,
+                    "description": tax_row.description,
+                    "tax_amount": tax_row.tax_amount,
+                    "custom_tax_category": tax_row.custom_tax_category,
+                    "tax_category": tax_row.tax_category,
+                    "cost_center": tax_row.cost_center or cost_center,
+                    "category": tax_row.category or "Total",
+                    "add_deduct_tax": tax_row.add_deduct_tax or "Add",
+                    "rate": tax_row.rate
+                })
     
     # Freight Handling
     if doc.doctype == "Sales Invoice":
