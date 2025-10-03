@@ -206,10 +206,16 @@ function apply_tax_summary(frm) {
                 });
             }
 
-            // Only apply 236G automatically for Sales Invoice, not Purchase Invoice
+            // Apply 236G tax from template
             let advance_tax = 0;
+            
+            // Calculate base for 236G: total invoice value including taxes
+            // total_inclusive = item amounts + sales tax + further tax
+            let tax_base_for_236g = total_inclusive;
+            
             if (frm.doc.doctype === "Sales Invoice") {
-                advance_tax = (advance.advance_tax_rate || 0) * 0.01 * total_inclusive;
+                // For Sales Invoice: Calculate 236G on total inclusive amount
+                advance_tax = (advance.advance_tax_rate || 0) * 0.01 * tax_base_for_236g;
 
                 if (advance_tax && advance.advance_tax_account) {
                     let row = frm.add_child("taxes");
@@ -222,16 +228,34 @@ function apply_tax_summary(frm) {
                         tax_category: "236G"
                     });
                 }
-            }
-
-            // Re-add preserved 236G rows for Purchase Invoice
-            if (frm.doc.doctype === "Purchase Invoice" && preserved_236g_rows.length > 0) {
-                preserved_236g_rows.forEach(preserved_row => {
-                    let row = frm.add_child("taxes");
-                    Object.assign(row, preserved_row);
-                    advance_tax += flt(preserved_row.tax_amount || 0);
-                });
-                console.log(`[apply_tax_summary] Restored ${preserved_236g_rows.length} manually added 236G row(s)`);
+            } else if (frm.doc.doctype === "Purchase Invoice") {
+                // For Purchase Invoice: Apply 236G from template if available, otherwise restore preserved rows
+                if (advance.advance_tax_rate && advance.advance_tax_account && frm.doc.custom_tax_template) {
+                    // Template has 236G defined - calculate on total inclusive amount
+                    advance_tax = (advance.advance_tax_rate || 0) * 0.01 * tax_base_for_236g;
+                    
+                    if (advance_tax) {
+                        let row = frm.add_child("taxes");
+                        Object.assign(row, {
+                            charge_type: "Actual",
+                            account_head: advance.advance_tax_account,
+                            description: "Withholding Tax (236G)",
+                            tax_amount: advance_tax,
+                            custom_tax_category: "236G",
+                            tax_category: "236G",
+                            rate: advance.advance_tax_rate
+                        });
+                        console.log(`[apply_tax_summary] Applied 236G from template: ${advance_tax} (based on total inclusive: ${tax_base_for_236g})`);
+                    }
+                } else if (preserved_236g_rows.length > 0) {
+                    // No template or template has no 236G - restore manually added rows
+                    preserved_236g_rows.forEach(preserved_row => {
+                        let row = frm.add_child("taxes");
+                        Object.assign(row, preserved_row);
+                        advance_tax += flt(preserved_row.tax_amount || 0);
+                    });
+                    console.log(`[apply_tax_summary] Restored ${preserved_236g_rows.length} manually added 236G row(s)`);
+                }
             }
 
             // Update UI instantly
@@ -253,7 +277,7 @@ function apply_tax_summary(frm) {
 }
 
 
-function calculate_taxes(frm, row) {
+function calculate_taxes(frm, row, manual_override_field) {
     if (frm.doc.custom_purchase_invoice_type === "Import") {
         return;
     }
@@ -283,18 +307,173 @@ function calculate_taxes(frm, row) {
         return;
     }
 
+    if (frm.doc.custom_sales_tax_invoice === 0) {
+        console.log(`[calculate_taxes] Skipping calculation for item: ${row.item_code} because its not a sales tax invoice`);
+        
+        // Clear all tax fields for unregistered supplier
+        let qty = row.qty > 0 ? row.qty : 1;
+        let base_amount = qty * row.rate;
+        const multiplier = getMultiplier(frm);
+        
+        row.custom_st_rate = 0;
+        row.custom_st = 0;
+        row.custom_further_tax = 0;
+        row.custom_at = 0;
+        row.custom_total_incl_tax = multiplier * base_amount;
+        
+        frm.refresh_field("items");
+        
+        // Call apply_tax_summary to recalculate taxes table
+        setTimeout(() => {
+            console.log(`[calculate_taxes] Calling apply_tax_summary after clearing taxes for unregistered supplier`);
+            apply_tax_summary(frm);
+        }, 50);
+        
+        return;
+    }
+
    
 
-    console.log(`[calculate_taxes] Starting calculation for item: ${row.item_code}`);
+    console.log(`[calculate_taxes] Starting calculation for item: ${row.item_code}, manual_override_field: ${manual_override_field}`);
 
+    let qty = row.qty > 0 ? row.qty : 1;
+    let base_amount = qty * row.rate;
+    const multiplier = getMultiplier(frm);
+    let precision = frappe.boot.sysdefaults.currency_precision || 2;
+
+    // Handle manual override scenarios
+    if (manual_override_field === "custom_st") {
+        // User manually changed the sales tax amount
+        console.log(`[calculate_taxes] Manual override: custom_st = ${row.custom_st}`);
+        
+        let sales_tax = flt(row.custom_st || 0, precision);
+        
+        // Reverse calculate the rate from amount
+        let sales_tax_rate = 0;
+        if (base_amount !== 0) {
+            sales_tax_rate = (sales_tax / (multiplier * base_amount)) * 100;
+        }
+        
+        row.custom_st_rate = flt(sales_tax_rate, precision);
+        row.custom_st = sales_tax;
+        
+        // Recalculate total including tax
+        fetch_item_tax_template(row, function(item_tax_template) {
+            let further_tax = 0;
+            
+            if (item_tax_template) {
+                frappe.call({
+                    method: "frappe.client.get",
+                    args: {
+                        doctype: "Item Tax Template",
+                        name: item_tax_template
+                    },
+                    callback: function(response) {
+                        if (response.message) {
+                            const tax_rates = response.message.taxes || [];
+                            
+                            tax_rates.forEach(rate => {
+                                if (
+                                    rate.custom_tax_category === "Further Sales Tax" &&
+                                    frm.doc.doctype === "Sales Invoice" &&
+                                    (!frm.doc.custom_customer_st_status || frm.doc.custom_customer_st_status === "Unregistered")
+                                ) {
+                                    further_tax += multiplier * (rate.tax_rate * 0.01 * base_amount);
+                                }
+                            });
+                        }
+                        
+                        row.custom_further_tax = further_tax;
+                        row.custom_at = 0;
+                        row.custom_total_incl_tax = multiplier * base_amount + sales_tax + further_tax;
+                        
+                        frm.refresh_field("items");
+                        setTimeout(() => {
+                            apply_tax_summary(frm);
+                        }, 50);
+                    }
+                });
+            } else {
+                row.custom_further_tax = 0;
+                row.custom_at = 0;
+                row.custom_total_incl_tax = multiplier * base_amount + sales_tax;
+                
+                frm.refresh_field("items");
+                setTimeout(() => {
+                    apply_tax_summary(frm);
+                }, 50);
+            }
+        });
+        
+        return;
+    }
+    
+    if (manual_override_field === "custom_st_rate") {
+        // User manually changed the sales tax rate
+        console.log(`[calculate_taxes] Manual override: custom_st_rate = ${row.custom_st_rate}`);
+        
+        let sales_tax_rate = flt(row.custom_st_rate || 0, precision);
+        let sales_tax = multiplier * (sales_tax_rate * 0.01 * base_amount);
+        
+        row.custom_st_rate = sales_tax_rate;
+        row.custom_st = flt(sales_tax, precision);
+        
+        // Recalculate total including tax
+        fetch_item_tax_template(row, function(item_tax_template) {
+            let further_tax = 0;
+            
+            if (item_tax_template) {
+                frappe.call({
+                    method: "frappe.client.get",
+                    args: {
+                        doctype: "Item Tax Template",
+                        name: item_tax_template
+                    },
+                    callback: function(response) {
+                        if (response.message) {
+                            const tax_rates = response.message.taxes || [];
+                            
+                            tax_rates.forEach(rate => {
+                                if (
+                                    rate.custom_tax_category === "Further Sales Tax" &&
+                                    frm.doc.doctype === "Sales Invoice" &&
+                                    (!frm.doc.custom_customer_st_status || frm.doc.custom_customer_st_status === "Unregistered")
+                                ) {
+                                    further_tax += multiplier * (rate.tax_rate * 0.01 * base_amount);
+                                }
+                            });
+                        }
+                        
+                        row.custom_further_tax = further_tax;
+                        row.custom_at = 0;
+                        row.custom_total_incl_tax = multiplier * base_amount + sales_tax + further_tax;
+                        
+                        frm.refresh_field("items");
+                        setTimeout(() => {
+                            apply_tax_summary(frm);
+                        }, 50);
+                    }
+                });
+            } else {
+                row.custom_further_tax = 0;
+                row.custom_at = 0;
+                row.custom_total_incl_tax = multiplier * base_amount + sales_tax;
+                
+                frm.refresh_field("items");
+                setTimeout(() => {
+                    apply_tax_summary(frm);
+                }, 50);
+            }
+        });
+        
+        return;
+    }
+
+    // Normal flow: fetch from tax template
     fetch_item_tax_template(row, function(item_tax_template) {
         let sales_tax = 0;
         let further_tax = 0;
         let sales_tax_rate = 0;
-        let qty = row.qty > 0 ? row.qty : 1;
-        let base_amount = qty * row.rate;
-
-        const multiplier = getMultiplier(frm);
 
         if (item_tax_template) {
             console.log(`[calculate_taxes] Found tax template: ${item_tax_template}`);
@@ -325,11 +504,11 @@ function calculate_taxes(frm, row) {
                         });
 
                         // Update row fields first
-                        row.custom_st_rate = sales_tax_rate;
-                        row.custom_st = sales_tax;
-                        row.custom_further_tax = further_tax;
+                        row.custom_st_rate = flt(sales_tax_rate, precision);
+                        row.custom_st = flt(sales_tax, precision);
+                        row.custom_further_tax = flt(further_tax, precision);
                         row.custom_at = 0;
-                        row.custom_total_incl_tax = multiplier * base_amount + sales_tax + further_tax;
+                        row.custom_total_incl_tax = flt(multiplier * base_amount + sales_tax + further_tax, precision);
 
                         console.log(`[calculate_taxes] Updated row ${row.item_code}:`, {
                             custom_st: row.custom_st,
@@ -355,7 +534,7 @@ function calculate_taxes(frm, row) {
             row.custom_st = 0;
             row.custom_further_tax = 0;
             row.custom_at = 0;
-            row.custom_total_incl_tax = multiplier * base_amount;
+            row.custom_total_incl_tax = flt(multiplier * base_amount, precision);
             
             frm.refresh_field("items");
             
