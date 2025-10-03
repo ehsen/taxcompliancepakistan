@@ -29,7 +29,8 @@ app_license = "mit"
 app_include_js = "/assets/taxcompliancepakistan/js/js_overrides/taxation.js"
 
 doctype_js = {
-    "Purchase Invoice": "public/js/js_overrides/purchase_invoice.js"
+    "Purchase Invoice": "public/js/js_overrides/purchase_invoice.js",
+    "Sales Invoice": "public/js/js_overrides/sales_invoice.js"
 }
 
 # include js, css files in header of web template
@@ -149,13 +150,16 @@ doctype_js = {
 # 	}
 # }
 
+# TODO: Remove this once we have a proper solution for purchase invoice, 
+# as calculations should come from js code not from backend, 
+# in purchase data entry manual adjustments required due to rounding off diff with suppliers
 doc_events = {
     "Sales Invoice": {
         "on_save": "taxcompliancepakistan.utilities.tax_overrides.sales_invoice_on_update"
     },
-    "Purchase Invoice": {
-        "on_update": "taxcompliancepakistan.utilities.tax_overrides.purchase_invoice_on_update"
-    },
+    #"Purchase Invoice": {
+     #   "on_update": "taxcompliancepakistan.utilities.tax_overrides.purchase_invoice_on_update"
+    #},
     "Payment Entry": {
         "on_update": "taxcompliancepakistan.utilities.wht_overrides.on_payment_entry_update"
     }
