@@ -1,18 +1,1 @@
-[
- {
-  "default_value": null,
-  "doc_type": "WHT Exemption",
-  "docstatus": 0,
-  "doctype": "Property Setter",
-  "doctype_or_field": "DocField",
-  "field_name": "naming_series",
-  "is_system_generated": 0,
-  "modified": "2025-09-17 17:07:01.717036",
-  "module": "TaxCompliancePakistan",
-  "name": "WHT Exemption-naming_series-options",
-  "property": "options",
-  "property_type": "Text",
-  "row_name": null,
-  "value": "{party}.-.##"
- }
-]
+[]
