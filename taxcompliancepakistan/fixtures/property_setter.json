@@ -1,1 +1,18 @@
-[]
+[
+ {
+  "default_value": null,
+  "doc_type": "Payment Entry",
+  "docstatus": 0,
+  "doctype": "Property Setter",
+  "doctype_or_field": "DocField",
+  "field_name": "references",
+  "is_system_generated": 0,
+  "modified": "2025-10-28 14:10:08.867032",
+  "module": "TaxCompliancePakistan",
+  "name": "Payment Entry-references-ignore_user_permissions",
+  "property": "ignore_user_permissions",
+  "property_type": "Check",
+  "row_name": null,
+  "value": "1"
+ }
+]
