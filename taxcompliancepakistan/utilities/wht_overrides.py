@@ -6,20 +6,17 @@ def calculate_withholding_tax(payment_entry):
 
     # Initialize default_wht_template to None
     default_wht_template = None
-    print('started calculati0on')
+    
     # Only apply WHT logic for Supplier/Customer payments. Skip for Employee and others.
     if getattr(payment_entry, "party_type", None) not in ("Supplier", "Customer"):
-        print('skipped due to attribute')
         return
 
     if payment_entry.party_type == "Supplier":
         supplier = frappe.get_doc("Supplier", payment_entry.party)
         default_wht_template = supplier.get("custom_default_wht_template")
-        print("Skipped at supplier")
 
     # Populate missing WHT section in references using default template (if any)
     for ref in payment_entry.references:
-        print("looping on references")
         if (
             ref.reference_doctype == "Purchase Invoice"
             and not ref.custom_wht_section
@@ -81,7 +78,7 @@ def get_applicable_rate(section, fbr_status):
 
 def update_advance_taxes_and_charges(doc, wht_summary, sections_map, payment_type):
     doc.set("taxes", [])  # Clear existing rows if any
-    frappe.log_error(message=f"{wht_summary} ",title="WHT")
+    
     for section_name, total_wht in wht_summary.items():
         section = sections_map.get(section_name)
         if not section:
