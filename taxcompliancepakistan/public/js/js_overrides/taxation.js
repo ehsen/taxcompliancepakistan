@@ -51,34 +51,52 @@ function fetch_item_tax_template(row, callback) {
         console.log(`Returning item_tax_template directly: ${row.item_tax_template}`);
         callback(row.item_tax_template);
     } else {
-        // Access it from the item group
-        console.log(`Fetching item group for: ${row.item_group}`);
+        // First fetch the Item to get item_group
         frappe.call({
             method: "frappe.client.get",
             args: {
-                doctype: "Item Group",
-                name: row.item_group
+                doctype: "Item",
+                name: row.item_code
             },
-            callback: function(response) {
-                console.log(`Response from item group fetch:`, response);
-                if (response.message) {
-                    const taxes = response.message.taxes || []; // Assuming taxes is the child table field
-                    console.log(`Taxes found:`, taxes);
-                    
-                    if (taxes.length > 0) {
-                        const salesTaxEntry = taxes[0]; // Assuming the first entry is relevant
-                        console.log(`Found sales tax entry:`, salesTaxEntry);
-                        
-                        if (salesTaxEntry.item_tax_template) {
-                            console.log(`Sales tax template in entry is ${salesTaxEntry.item_tax_template}`);
-                            callback(salesTaxEntry.item_tax_template);
-                        } else {
-                            callback(null);
+            callback: function(item_response) {
+                console.log(`Response from item fetch:`, item_response);
+                if (item_response.message && item_response.message.item_group) {
+                    const item_group = item_response.message.item_group;
+                    console.log(`Fetched item_group: ${item_group}`);
+
+                    // Now fetch the Item Group to get taxes
+                    frappe.call({
+                        method: "frappe.client.get",
+                        args: {
+                            doctype: "Item Group",
+                            name: item_group
+                        },
+                        callback: function(group_response) {
+                            console.log(`Response from item group fetch:`, group_response);
+                            if (group_response.message) {
+                                const taxes = group_response.message.taxes || []; // Assuming taxes is the child table field
+                                console.log(`Taxes found:`, taxes);
+
+                                if (taxes.length > 0) {
+                                    const salesTaxEntry = taxes[0]; // Assuming the first entry is relevant
+                                    console.log(`Found sales tax entry:`, salesTaxEntry);
+
+                                    if (salesTaxEntry.item_tax_template) {
+                                        console.log(`Sales tax template in entry is ${salesTaxEntry.item_tax_template}`);
+                                        callback(salesTaxEntry.item_tax_template);
+                                    } else {
+                                        callback(null);
+                                    }
+                                } else {
+                                    callback(null);
+                                }
+                            } else {
+                                callback(null);
+                            }
                         }
-                    } else {
-                        callback(null);
-                    }
+                    });
                 } else {
+                    console.log(`No item_group found for item: ${row.item_code}`);
                     callback(null);
                 }
             }
@@ -291,6 +309,7 @@ function calculate_taxes(frm, row, manual_override_field) {
         const multiplier = getMultiplier(frm);
         
         row.custom_st_rate = 0;
+        row.custom_ft_rate = 0;
         row.custom_st = 0;
         row.custom_further_tax = 0;
         row.custom_at = 0;
@@ -317,6 +336,7 @@ function calculate_taxes(frm, row, manual_override_field) {
         
         row.custom_st_rate = 0;
         row.custom_st = 0;
+        row.custom_ft_rate = 0;
         row.custom_further_tax = 0;
         row.custom_at = 0;
         row.custom_total_incl_tax = multiplier * base_amount;
@@ -411,17 +431,17 @@ function calculate_taxes(frm, row, manual_override_field) {
     if (manual_override_field === "custom_st_rate") {
         // User manually changed the sales tax rate
         console.log(`[calculate_taxes] Manual override: custom_st_rate = ${row.custom_st_rate}`);
-        
+
         let sales_tax_rate = flt(row.custom_st_rate || 0, precision);
         let sales_tax = multiplier * (sales_tax_rate * 0.01 * base_amount);
-        
+
         row.custom_st_rate = sales_tax_rate;
         row.custom_st = flt(sales_tax, precision);
-        
+
         // Recalculate total including tax
         fetch_item_tax_template(row, function(item_tax_template) {
             let further_tax = 0;
-            
+
             if (item_tax_template) {
                 frappe.call({
                     method: "frappe.client.get",
@@ -432,7 +452,7 @@ function calculate_taxes(frm, row, manual_override_field) {
                     callback: function(response) {
                         if (response.message) {
                             const tax_rates = response.message.taxes || [];
-                            
+
                             tax_rates.forEach(rate => {
                                 if (
                                     rate.custom_tax_category === "Further Sales Tax" &&
@@ -443,11 +463,11 @@ function calculate_taxes(frm, row, manual_override_field) {
                                 }
                             });
                         }
-                        
+
                         row.custom_further_tax = further_tax;
                         row.custom_at = 0;
                         row.custom_total_incl_tax = multiplier * base_amount + sales_tax + further_tax;
-                        
+
                         frm.refresh_field("items");
                         setTimeout(() => {
                             apply_tax_summary(frm);
@@ -458,14 +478,42 @@ function calculate_taxes(frm, row, manual_override_field) {
                 row.custom_further_tax = 0;
                 row.custom_at = 0;
                 row.custom_total_incl_tax = multiplier * base_amount + sales_tax;
-                
+
                 frm.refresh_field("items");
                 setTimeout(() => {
                     apply_tax_summary(frm);
                 }, 50);
             }
         });
-        
+
+        return;
+    }
+
+    if (manual_override_field === "custom_ft_rate") {
+        // User manually changed the further tax rate
+        console.log(`[calculate_taxes] Manual override: custom_ft_rate = ${row.custom_ft_rate}`);
+
+        let further_tax_rate = flt(row.custom_ft_rate || 0, precision);
+        let further_tax = multiplier * (further_tax_rate * 0.01 * base_amount);
+
+        console.log(`[calculate_taxes] Calculated further_tax: ${further_tax} from rate: ${further_tax_rate}, base_amount: ${base_amount}, multiplier: ${multiplier}`);
+
+        row.custom_ft_rate = further_tax_rate;
+        row.custom_further_tax = flt(further_tax, precision);
+
+        // Calculate sales tax (if any)
+        let sales_tax = flt(row.custom_st || 0, precision);
+
+        row.custom_at = 0;
+        row.custom_total_incl_tax = multiplier * base_amount + sales_tax + further_tax;
+
+        console.log(`[calculate_taxes] Updated row - further_tax: ${row.custom_further_tax}, total_incl_tax: ${row.custom_total_incl_tax}`);
+
+        frm.refresh_field("items");
+        setTimeout(() => {
+            apply_tax_summary(frm);
+        }, 50);
+
         return;
     }
 
@@ -474,6 +522,7 @@ function calculate_taxes(frm, row, manual_override_field) {
         let sales_tax = 0;
         let further_tax = 0;
         let sales_tax_rate = 0;
+        let further_tax_rate = 0;
 
         if (item_tax_template) {
             console.log(`[calculate_taxes] Found tax template: ${item_tax_template}`);
@@ -506,6 +555,7 @@ function calculate_taxes(frm, row, manual_override_field) {
                         // Update row fields first
                         row.custom_st_rate = flt(sales_tax_rate, precision);
                         row.custom_st = flt(sales_tax, precision);
+                        row.custom_ft_rate = flt(further_tax_rate, precision);
                         row.custom_further_tax = flt(further_tax, precision);
                         row.custom_at = 0;
                         row.custom_total_incl_tax = flt(multiplier * base_amount + sales_tax + further_tax, precision);
@@ -532,6 +582,7 @@ function calculate_taxes(frm, row, manual_override_field) {
             console.log(`[calculate_taxes] No tax template found for item: ${row.item_code}`);
             row.custom_st_rate = 0;
             row.custom_st = 0;
+            row.custom_ft_rate = 0;
             row.custom_further_tax = 0;
             row.custom_at = 0;
             row.custom_total_incl_tax = flt(multiplier * base_amount, precision);
