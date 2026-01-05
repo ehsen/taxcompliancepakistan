@@ -161,13 +161,11 @@ function get_advance_tax_from_template(template_name, callback) {
 }
 
 
-function getMultiplier(frm){
-    
+function getMultiplier(frm, row){
     let multiplier = 1;
-    if (frm.doc.is_return === 1){
+    if (frm.doc.is_return === 1 || (row && row.qty < 0)){
         multiplier = -1
     }
-    
     return multiplier;
 }
 
@@ -302,11 +300,11 @@ function calculate_taxes(frm, row, manual_override_field) {
 
     if (frm.doc.custom_supplier_st_status === "Unregistered") {
         console.log(`[calculate_taxes] Skipping calculation for item: ${row.item_code} because supplier is unregistered`);
-        
+
         // Clear all tax fields for unregistered supplier
-        let qty = row.qty > 0 ? row.qty : 1;
+        let qty = Math.abs(row.qty || 0);
         let base_amount = qty * row.rate;
-        const multiplier = getMultiplier(frm);
+        const multiplier = getMultiplier(frm, row);
         
         row.custom_st_rate = 0;
         row.custom_ft_rate = 0;
@@ -328,11 +326,11 @@ function calculate_taxes(frm, row, manual_override_field) {
 
     if (frm.doc.custom_sales_tax_invoice === 0) {
         console.log(`[calculate_taxes] Skipping calculation for item: ${row.item_code} because its not a sales tax invoice`);
-        
+
         // Clear all tax fields for unregistered supplier
-        let qty = row.qty > 0 ? row.qty : 1;
+        let qty = Math.abs(row.qty || 0);
         let base_amount = qty * row.rate;
-        const multiplier = getMultiplier(frm);
+        const multiplier = getMultiplier(frm, row);
         
         row.custom_st_rate = 0;
         row.custom_st = 0;
@@ -356,9 +354,9 @@ function calculate_taxes(frm, row, manual_override_field) {
 
     console.log(`[calculate_taxes] Starting calculation for item: ${row.item_code}, manual_override_field: ${manual_override_field}`);
 
-    let qty = row.qty > 0 ? row.qty : 1;
+    let qty = Math.abs(row.qty || 0);
     let base_amount = qty * row.rate;
-    const multiplier = getMultiplier(frm);
+    const multiplier = getMultiplier(frm, row);
     let precision = frappe.boot.sysdefaults.currency_precision || 2;
 
     // Handle manual override scenarios
@@ -513,10 +511,10 @@ function calculate_taxes(frm, row, manual_override_field) {
         setTimeout(() => {
             apply_tax_summary(frm);
         }, 50);
-
+                
         return;
     }
-
+ 
     // Normal flow: fetch from tax template
     fetch_item_tax_template(row, function(item_tax_template) {
         let sales_tax = 0;
