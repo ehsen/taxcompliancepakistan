@@ -169,6 +169,123 @@ function getMultiplier(frm, row){
     return multiplier;
 }
 
+/**
+ * Calculate taxes for 3rd Schedule Goods using simplified calculation
+ * 3rd Schedule: Tax is calculated on notified/retail price
+ * 
+ * Algorithm:
+ * 1. Get the taxable base = MAX(custom_fixed_notified_value, custom_retail_price)
+ * 2. Multiply qty with the taxable base to get the total taxable amount
+ * 3. Calculate tax by simply multiplying with ST rate: ST = (qty * taxable_base * ST_rate) / 100
+ * 4. Calculate further tax if applicable (same logic)
+ * 5. Calculate total inclusive of taxes
+ * 
+ * @param {Object} row - The invoice item row
+ * @param {Object} itemData - Item master data (custom_fixed_notified_value, custom_retail_price)
+ * @param {Object} templateData - Tax template data with tax rates
+ * @param {Object} frm - The parent form
+ * @param {Number} multiplier - Direction multiplier (1 or -1)
+ * @param {Number} qty - Absolute quantity
+ * @param {Number} precision - Currency precision
+ * @returns {Object} Calculated tax object with st, st_rate, further_tax, ft_rate, ex_sales_tax_value, total_incl_tax
+ */
+function calculate_third_schedule_taxes(row, itemData, templateData, frm, multiplier, qty, precision) {
+    const result = {
+        st: 0,
+        st_rate: 0,
+        further_tax: 0,
+        ft_rate: 0,
+        ex_sales_tax_value: 0,
+        total_incl_tax: 0
+    };
+
+    console.log(`[calculate_third_schedule_taxes] Starting 3rd Schedule calculation for item: ${row.item_code}`);
+
+    // Step 1: Determine taxable base - use the higher of notified value or retail price
+    const fixedNotifiedValue = flt(itemData.custom_fixed_notified_value || 0, precision);
+    const retailPrice = flt(itemData.custom_retail_price || 0, precision);
+    const taxableBase = Math.max(fixedNotifiedValue, retailPrice);
+
+    if (taxableBase <= 0) {
+        console.warn(`[calculate_third_schedule_taxes] No valid taxable base for 3rd Schedule item: ${row.item_code}`);
+        result.total_incl_tax = multiplier * qty * flt(row.rate || 0, precision);
+        return result;
+    }
+
+    console.log(`[calculate_third_schedule_taxes] Taxable base determined:`, {
+        fixed_notified_value: fixedNotifiedValue,
+        retail_price: retailPrice,
+        taxable_base: taxableBase
+    });
+
+    // Step 2: Calculate total taxable amount = qty * taxable_base
+    const totalTaxableAmount = qty * taxableBase;
+    console.log(`[calculate_third_schedule_taxes] Total taxable amount: ${totalTaxableAmount} (qty: ${qty} * base: ${taxableBase})`);
+
+    // Step 3: Extract sales tax rate from template and calculate tax
+    let salestaxRate = 0;
+    let salesTax = 0;
+    if (templateData && templateData.taxes) {
+        templateData.taxes.forEach(tax => {
+            if (tax.custom_tax_category === "Sales Tax") {
+                salestaxRate = flt(tax.tax_rate || 0, precision);
+            }
+        });
+    }
+
+    // Calculate sales tax: ST = (total_taxable_amount * ST_rate) / 100
+    if (salestaxRate > 0) {
+        salesTax = multiplier * (totalTaxableAmount * salestaxRate / 100);
+        salesTax = flt(salesTax, precision);
+    }
+
+    console.log(`[calculate_third_schedule_taxes] Sales tax calculation:`, {
+        sales_tax_rate: salestaxRate,
+        sales_tax: salesTax,
+        total_taxable_amount: totalTaxableAmount
+    });
+
+    // Step 4: Calculate further tax based on total taxable amount (if applicable)
+    let furtherTax = 0;
+    let furtherTaxRate = 0;
+    if (templateData && templateData.taxes) {
+        templateData.taxes.forEach(tax => {
+            if (
+                tax.custom_tax_category === "Further Sales Tax" &&
+                frm.doc.doctype === "Sales Invoice" &&
+                frm.doc.custom_customer_st_status === "Unregistered"
+            ) {
+                furtherTaxRate = flt(tax.tax_rate || 0, precision);
+                furtherTax = multiplier * (totalTaxableAmount * furtherTaxRate / 100);
+                furtherTax = flt(furtherTax, precision);
+            }
+        });
+    }
+
+    // Step 5: Calculate total inclusive of taxes
+    // total_incl_tax = base_amount (qty * rate) + custom_st + custom_further_tax
+    const baseAmount = multiplier * qty * flt(row.rate || 0, precision);
+    const totalInclTax = baseAmount + salesTax + furtherTax;
+
+    result.st = flt(salesTax, precision);
+    result.st_rate = flt(salestaxRate, precision);
+    result.further_tax = flt(furtherTax, precision);
+    result.ft_rate = flt(furtherTaxRate, precision);
+    result.ex_sales_tax_value = multiplier * (qty * taxableBase);
+    result.total_incl_tax = flt(totalInclTax, precision);
+
+    console.log(`[calculate_third_schedule_taxes] 3rd Schedule calculation complete:`, {
+        st: result.st,
+        st_rate: result.st_rate,
+        further_tax: result.further_tax,
+        ft_rate: result.ft_rate,
+        ex_sales_tax_value: result.ex_sales_tax_value,
+        total_incl_tax: result.total_incl_tax
+    });
+
+    return result;
+}
+
 function apply_tax_summary(frm) {
     console.log(`[apply_tax_summary] Starting tax summary calculation`);
     const { total_st, total_further_tax, total_inclusive } = calculate_row_tax_totals(frm);
@@ -293,6 +410,125 @@ function apply_tax_summary(frm) {
 }
 
 
+/**
+ * Handle calculation for 3rd Schedule Goods items
+ * Routes to either manual override or standard 3rd Schedule calculation
+ * 
+ * @param {Object} frm - The parent form
+ * @param {Object} row - The invoice item row
+ * @param {String} manual_override_field - The field being manually overridden (if any)
+ */
+function handle_third_schedule_item_calculation(frm, row, manual_override_field) {
+    const qty = Math.abs(row.qty || 0);
+    const multiplier = getMultiplier(frm, row);
+    const precision = frappe.boot.sysdefaults.currency_precision || 2;
+
+    console.log(`[handle_third_schedule_item_calculation] Processing 3rd Schedule item: ${row.item_code}`);
+
+    // Fetch item master data and tax template
+    frappe.call({
+        method: "frappe.client.get",
+        args: {
+            doctype: "Item",
+            name: row.item_code
+        },
+        callback: function(itemResponse) {
+            if (!itemResponse.message) {
+                console.error(`[handle_third_schedule_item_calculation] Failed to fetch item: ${row.item_code}`);
+                return;
+            }
+
+            const itemData = itemResponse.message;
+            console.log(`[handle_third_schedule_item_calculation] Fetched item data:`, {
+                custom_fixed_notified_value: itemData.custom_fixed_notified_value,
+                custom_retail_price: itemData.custom_retail_price
+            });
+
+            // Fetch tax template
+            fetch_item_tax_template(row, function(itemTaxTemplate) {
+                let templateData = null;
+
+                if (!itemTaxTemplate) {
+                    console.warn(`[handle_third_schedule_item_calculation] No tax template found for 3rd Schedule item: ${row.item_code}`);
+                    // For 3rd Schedule, template is mandatory - but we proceed with zero taxes
+                    apply_third_schedule_taxes_to_row(frm, row, {
+                        st: 0,
+                        st_rate: 0,
+                        further_tax: 0,
+                        ft_rate: 0,
+                        ex_sales_tax_value: 0,
+                        total_incl_tax: multiplier * qty * flt(row.rate || 0, precision)
+                    });
+                    return;
+                }
+
+                // Fetch template data
+                frappe.call({
+                    method: "frappe.client.get",
+                    args: {
+                        doctype: "Item Tax Template",
+                        name: itemTaxTemplate
+                    },
+                    callback: function(templateResponse) {
+                        if (!templateResponse.message) {
+                            console.error(`[handle_third_schedule_item_calculation] Failed to fetch template: ${itemTaxTemplate}`);
+                            return;
+                        }
+
+                        templateData = templateResponse.message;
+
+                        // Calculate taxes using 3rd Schedule logic
+                        const taxResult = calculate_third_schedule_taxes(row, itemData, templateData, frm, multiplier, qty, precision);
+                        
+                        // Apply calculated taxes to row
+                        apply_third_schedule_taxes_to_row(frm, row, taxResult);
+                    },
+                    error: function(err) {
+                        console.error(`[handle_third_schedule_item_calculation] Error fetching template:`, err);
+                    }
+                });
+            });
+        },
+        error: function(err) {
+            console.error(`[handle_third_schedule_item_calculation] Error fetching item:`, err);
+        }
+    });
+}
+
+/**
+ * Apply calculated 3rd Schedule taxes to the row and refresh
+ * 
+ * @param {Object} frm - The parent form
+ * @param {Object} row - The invoice item row
+ * @param {Object} taxResult - Result from calculate_third_schedule_taxes
+ */
+function apply_third_schedule_taxes_to_row(frm, row, taxResult) {
+    const precision = frappe.boot.sysdefaults.currency_precision || 2;
+
+    row.custom_st_rate = flt(taxResult.st_rate, precision);
+    row.custom_st = flt(taxResult.st, precision);
+    row.custom_ft_rate = flt(taxResult.ft_rate, precision);
+    row.custom_further_tax = flt(taxResult.further_tax, precision);
+    row.custom_at = 0;
+    row.custom_total_incl_tax = flt(taxResult.total_incl_tax, precision);
+
+    console.log(`[apply_third_schedule_taxes_to_row] Applied 3rd Schedule taxes to ${row.item_code}:`, {
+        custom_st: row.custom_st,
+        custom_st_rate: row.custom_st_rate,
+        custom_further_tax: row.custom_further_tax,
+        custom_ft_rate: row.custom_ft_rate,
+        custom_total_incl_tax: row.custom_total_incl_tax
+    });
+
+    frm.refresh_field("items");
+
+    // Trigger tax summary recalculation after row update
+    setTimeout(() => {
+        console.log(`[apply_third_schedule_taxes_to_row] Calling apply_tax_summary after 3rd Schedule calculation`);
+        apply_tax_summary(frm);
+    }, 50);
+}
+
 function calculate_taxes(frm, row, manual_override_field) {
     if (frm.doc.custom_purchase_invoice_type === "Import") {
         return;
@@ -350,14 +586,19 @@ function calculate_taxes(frm, row, manual_override_field) {
         return;
     }
 
-   
-
     console.log(`[calculate_taxes] Starting calculation for item: ${row.item_code}, manual_override_field: ${manual_override_field}`);
 
     let qty = Math.abs(row.qty || 0);
     let base_amount = qty * row.rate;
     const multiplier = getMultiplier(frm, row);
     let precision = frappe.boot.sysdefaults.currency_precision || 2;
+
+    // Check if item is 3rd Schedule Goods - handle separately with reverse calculation
+    if (row.custom_tax_classification === "3rd Schedule Goods") {
+        console.log(`[calculate_taxes] Detected 3rd Schedule Goods: ${row.item_code} - routing to dedicated handler`);
+        handle_third_schedule_item_calculation(frm, row, manual_override_field);
+        return;
+    }
 
     // Handle manual override scenarios
     if (manual_override_field === "custom_st") {
@@ -389,22 +630,22 @@ function calculate_taxes(frm, row, manual_override_field) {
                     callback: function(response) {
                         if (response.message) {
                             const tax_rates = response.message.taxes || [];
-                            
+
                             tax_rates.forEach(rate => {
                                 if (
                                     rate.custom_tax_category === "Further Sales Tax" &&
                                     frm.doc.doctype === "Sales Invoice" &&
-                                    (!frm.doc.custom_customer_st_status || frm.doc.custom_customer_st_status === "Unregistered")
+                                    frm.doc.custom_customer_st_status === "Unregistered"
                                 ) {
                                     further_tax += multiplier * (rate.tax_rate * 0.01 * base_amount);
                                 }
                             });
                         }
-                        
+
                         row.custom_further_tax = further_tax;
                         row.custom_at = 0;
                         row.custom_total_incl_tax = multiplier * base_amount + sales_tax + further_tax;
-                        
+
                         frm.refresh_field("items");
                         setTimeout(() => {
                             apply_tax_summary(frm);
@@ -455,7 +696,7 @@ function calculate_taxes(frm, row, manual_override_field) {
                                 if (
                                     rate.custom_tax_category === "Further Sales Tax" &&
                                     frm.doc.doctype === "Sales Invoice" &&
-                                    (!frm.doc.custom_customer_st_status || frm.doc.custom_customer_st_status === "Unregistered")
+                                    frm.doc.custom_customer_st_status === "Unregistered"
                                 ) {
                                     further_tax += multiplier * (rate.tax_rate * 0.01 * base_amount);
                                 }
@@ -544,7 +785,7 @@ function calculate_taxes(frm, row, manual_override_field) {
                             if (
                                 rate.custom_tax_category === "Further Sales Tax" &&
                                 frm.doc.doctype === "Sales Invoice" &&
-                                (!frm.doc.custom_customer_st_status || frm.doc.custom_customer_st_status === "Unregistered")
+                                frm.doc.custom_customer_st_status === "Unregistered"
                             ) {
                                 further_tax += multiplier * (rate.tax_rate * 0.01 * base_amount);
                             }

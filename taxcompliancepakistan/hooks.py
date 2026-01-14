@@ -30,7 +30,8 @@ app_include_js = "/assets/taxcompliancepakistan/js/js_overrides/taxation.js"
 
 doctype_js = {
     "Purchase Invoice": "public/js/js_overrides/purchase_invoice.js",
-    "Sales Invoice": "public/js/js_overrides/sales_invoice.js"
+    "Sales Invoice": "public/js/js_overrides/sales_invoice.js",
+    "Payment Entry": "public/js/js_overrides/payment_entry.js"
 }
 
 # include js, css files in header of web template

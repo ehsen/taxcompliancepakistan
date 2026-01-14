@@ -4,6 +4,7 @@ from collections import defaultdict
 
 def calculate_withholding_tax(payment_entry):
 
+    payment_entry.taxes = []
     # Initialize default_wht_template to None
     default_wht_template = None
     
@@ -39,19 +40,31 @@ def calculate_withholding_tax(payment_entry):
         if not section:
             continue
 
+        #custom_wht_checked = getattr(ref, "custom_wht", False)
+
+        # Skip automatic calculation if custom_wht checkbox is selected
+        
+
         # Guard against missing custom field on variants like EmployeePaymentEntry
         fbr_status = getattr(payment_entry, "custom_party_fbr_status", None)
         
         rate = get_applicable_rate(section, fbr_status)
         if not rate:
             continue
-
-        wht_amount = ref.allocated_amount * (rate / 100.0)
-        ref.custom_wht_amount = wht_amount
-        ref.custom_wht_rate = rate or 0
-
-        wht_summary[section_name] += wht_amount
-
+        if payment_entry.custom_manual_wht == 1:
+            # User has selected custom WHT, use the custom_wht_amount entered by user
+            ref.custom_wht_rate = getattr(ref, "custom_wht_rate", 0)
+            frappe.log_error(title="Custom WHT Amount", message=f"Custom WHT Amount: {ref.custom_wht_amount}")
+            wht_summary[section_name] += getattr(ref, "custom_wht_amount", 0)
+            continue
+        else:
+            wht_amount = ref.allocated_amount * (rate / 100.0)
+            ref.custom_wht_amount = wht_amount
+            ref.custom_wht_rate = rate or 0
+    
+            wht_summary[section_name] += wht_amount
+        if ref.custom_wht_amount > 0 and not ref.custom_wht_section:
+            frappe.throw("Please set WHT Section in payment references")
     update_advance_taxes_and_charges(payment_entry, wht_summary, wht_sections, payment_entry.payment_type)
 
 def get_wht_sections_map(payment_entry):
@@ -78,7 +91,7 @@ def get_applicable_rate(section, fbr_status):
 
 def update_advance_taxes_and_charges(doc, wht_summary, sections_map, payment_type):
     doc.set("taxes", [])  # Clear existing rows if any
-    
+    doc.taxes = []
     for section_name, total_wht in wht_summary.items():
         section = sections_map.get(section_name)
         if not section:
