@@ -4,10 +4,10 @@
 
 import frappe
 from frappe import _
-from frappe.model.document import Document
+from erpnext.accounts.doctype.item_tax_template.item_tax_template import ItemTaxTemplate
 
 
-class CustomItemTaxTemplate(Document):
+class CustomItemTaxTemplate(ItemTaxTemplate):
     # begin: auto-generated types
     # This code is auto-generated. Do not modify anything in this block.
 
