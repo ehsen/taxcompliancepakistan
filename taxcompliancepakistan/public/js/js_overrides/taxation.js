@@ -3,6 +3,79 @@ This will override erpnext default Purchase Invoice Item. We need a set pattern 
 tax purposes, this will calculate ST,AT, Further Tax and any other taxes as per needs.
 */
 
+// Global cache for tax templates to avoid redundant fetches
+let tax_template_cache = {
+    // Structure: { "template_name": { taxes: [...], company: "...", ... } }
+};
+
+/**
+ * Store tax template in global cache
+ * @param {String} template_name - Template name
+ * @param {Object} template_data - Full template object
+ */
+function cache_tax_template(template_name, template_data) {
+    tax_template_cache[template_name] = template_data;
+    console.log(`[cache_tax_template] Cached template: ${template_name}`);
+}
+
+/**
+ * Retrieve tax template from cache
+ * @param {String} template_name - Template name
+ * @returns {Object|null} - Template object or null if not cached
+ */
+function get_cached_tax_template(template_name) {
+    const template = tax_template_cache[template_name];
+    if (template) {
+        console.log(`[get_cached_tax_template] Retrieved from cache: ${template_name}`);
+    }
+    return template || null;
+}
+
+/**
+ * Extract accounts directly from template object (no fetch needed)
+ * @param {Object} template_data - The template object
+ * @returns {Object} - Accounts object
+ */
+function extract_accounts_from_cached_template(template_data) {
+    const accounts = {
+        sales_tax_account: "",
+        further_tax_account: "",
+        advance_tax_account: ""
+    };
+
+    if (!template_data || !template_data.taxes) {
+        console.warn(`[extract_accounts_from_cached_template] Template data is empty`);
+        return accounts;
+    }
+
+    console.log(`[extract_accounts_from_cached_template] Extracting accounts from template with ${template_data.taxes.length} tax rows`);
+
+    template_data.taxes.forEach((tax, idx) => {
+        if (tax.custom_tax_category === "Sales Tax") {
+            accounts.sales_tax_account = tax.tax_type || "";
+            console.log(`[extract_accounts_from_cached_template] Row ${idx}: Sales Tax - category=${tax.custom_tax_category}, tax_type (account)=${accounts.sales_tax_account}, tax_rate=${tax.tax_rate}`);
+            if (!tax.tax_type) {
+                console.warn(`[extract_accounts_from_cached_template] Row ${idx}: Sales Tax row is missing tax_type (Account) field! Please fill in the Account field in the template.`);
+            }
+        } else if (tax.custom_tax_category === "Further Sales Tax") {
+            accounts.further_tax_account = tax.tax_type || "";
+            console.log(`[extract_accounts_from_cached_template] Row ${idx}: Further Tax - category=${tax.custom_tax_category}, tax_type (account)=${accounts.further_tax_account}, tax_rate=${tax.tax_rate}`);
+            if (!tax.tax_type) {
+                console.warn(`[extract_accounts_from_cached_template] Row ${idx}: Further Tax row is missing tax_type (Account) field! Please fill in the Account field in the template.`);
+            }
+        } else if (tax.custom_tax_category === "236G") {
+            accounts.advance_tax_account = tax.tax_type || "";
+            console.log(`[extract_accounts_from_cached_template] Row ${idx}: 236G - category=${tax.custom_tax_category}, tax_type (account)=${accounts.advance_tax_account}, tax_rate=${tax.tax_rate}`);
+            if (!tax.tax_type) {
+                console.warn(`[extract_accounts_from_cached_template] Row ${idx}: 236G row is missing tax_type (Account) field! Please fill in the Account field in the template.`);
+            }
+        }
+    });
+
+    console.log(`[extract_accounts_from_cached_template] Final accounts:`, accounts);
+    return accounts;
+}
+
 /**
  * Extract accounts from a tax template's detail rows
  * @param {String} template_name - The Item Tax Template name
@@ -39,13 +112,13 @@ function extract_accounts_from_template(template_name, callback) {
                 // Extract account heads from tax template detail rows based on tax category
                 res.message.taxes.forEach((tax, idx) => {
                     if (tax.custom_tax_category === "Sales Tax") {
-                        accounts.sales_tax_account = tax.tax_type || "";
+                        accounts.sales_tax_account = tax.account_head || "";
                         console.log(`[extract_accounts_from_template] Row ${idx}: Sales Tax account = ${accounts.sales_tax_account}`);
                     } else if (tax.custom_tax_category === "Further Sales Tax") {
-                        accounts.further_tax_account = tax.tax_type || "";
+                        accounts.further_tax_account = tax.account_head || "";
                         console.log(`[extract_accounts_from_template] Row ${idx}: Further Tax account = ${accounts.further_tax_account}`);
                     } else if (tax.custom_tax_category === "236G") {
-                        accounts.advance_tax_account = tax.tax_type || "";
+                        accounts.advance_tax_account = tax.account_head || "";
                         console.log(`[extract_accounts_from_template] Row ${idx}: 236G account = ${accounts.advance_tax_account}`);
                     }
                 });
@@ -225,60 +298,81 @@ function calculate_row_tax_totals(frm) {
 
 function fetch_item_tax_template(row, callback) {
     if (row.item_tax_template) {
-        console.log(`Returning item_tax_template directly: ${row.item_tax_template}`);
+        console.log(`[fetch_item_tax_template] Returning item_tax_template directly: ${row.item_tax_template}`);
         callback(row.item_tax_template);
-    } else {
-        // First fetch the Item to get item_group
-        frappe.call({
-            method: "frappe.client.get",
-            args: {
-                doctype: "Item",
-                name: row.item_code
-            },
-            callback: function(item_response) {
-                console.log(`Response from item fetch:`, item_response);
-                if (item_response.message && item_response.message.item_group) {
-                    const item_group = item_response.message.item_group;
-                    console.log(`Fetched item_group: ${item_group}`);
+        return;
+    }
 
-                    // Now fetch the Item Group to get taxes
-                    frappe.call({
-                        method: "frappe.client.get",
-                        args: {
-                            doctype: "Item Group",
-                            name: item_group
-                        },
-                        callback: function(group_response) {
-                            console.log(`Response from item group fetch:`, group_response);
-                            if (group_response.message) {
-                                const taxes = group_response.message.taxes || []; // Assuming taxes is the child table field
-                                console.log(`Taxes found:`, taxes);
+    // Fetch the Item master
+    frappe.call({
+        method: "frappe.client.get",
+        args: {
+            doctype: "Item",
+            name: row.item_code
+        },
+        callback: function(item_response) {
+            if (!item_response.message) {
+                console.warn(`[fetch_item_tax_template] Failed to fetch item: ${row.item_code}`);
+                callback(null);
+                return;
+            }
 
-                                if (taxes.length > 0) {
-                                    const salesTaxEntry = taxes[0]; // Assuming the first entry is relevant
-                                    console.log(`Found sales tax entry:`, salesTaxEntry);
+            const item_data = item_response.message;
+            console.log(`[fetch_item_tax_template] Fetched item: ${row.item_code}`, item_data);
 
-                                    if (salesTaxEntry.item_tax_template) {
-                                        console.log(`Sales tax template in entry is ${salesTaxEntry.item_tax_template}`);
-                                        callback(salesTaxEntry.item_tax_template);
-                                    } else {
-                                        callback(null);
-                                    }
-                                } else {
-                                    callback(null);
-                                }
-                            } else {
-                                callback(null);
-                            }
-                        }
-                    });
-                } else {
-                    console.log(`No item_group found for item: ${row.item_code}`);
-                    callback(null);
+            // Step 1: Check Item master's taxes table for Sales Tax category
+            const item_taxes = item_data.taxes || [];
+            console.log(`[fetch_item_tax_template] Item has ${item_taxes.length} tax rows`);
+
+            for (let tax_row of item_taxes) {
+                if (tax_row.tax_category === "Sales Tax") {
+                    const template = tax_row.item_tax_template;
+                    console.log(`[fetch_item_tax_template] Found Sales Tax template in Item taxes table: ${template}`);
+                    if (template) {
+                        callback(template);
+                        return;
+                    }
                 }
             }
-        });
-    }
+
+            // Step 2: If not found in Item taxes, check FBR Transaction Type
+            const fbr_classification = row.custom_tax_classification || item_data.custom_tax_classification;
+            console.log(`[fetch_item_tax_template] No Sales Tax template in Item. Checking FBR Transaction Type: ${fbr_classification}`);
+
+            if (!fbr_classification) {
+                console.warn(`[fetch_item_tax_template] No FBR Transaction Type found`);
+                callback(null);
+                return;
+            }
+
+            // Fetch FBR Transaction Type to get custom_tax_template
+            frappe.call({
+                method: "frappe.client.get",
+                args: {
+                    doctype: "FBR Transaction Type",
+                    name: fbr_classification
+                },
+                callback: function(fbr_response) {
+                    if (fbr_response.message && fbr_response.message.tax_template) {
+                        const template = fbr_response.message.tax_template;
+                        console.log(`[fetch_item_tax_template] Found template in FBR Transaction Type: ${template}`);
+                        callback(template);
+                    } else {
+                        console.warn(`[fetch_item_tax_template] No custom_tax_template in FBR Transaction Type: ${fbr_classification}`);
+                        callback(null);
+                    }
+                },
+                error: function(err) {
+                    console.error(`[fetch_item_tax_template] Error fetching FBR Transaction Type:`, err);
+                    callback(null);
+                }
+            });
+        },
+        error: function(err) {
+            console.error(`[fetch_item_tax_template] Error fetching item:`, err);
+            callback(null);
+        }
+    });
 }
 
 
@@ -561,7 +655,7 @@ function calculate_third_schedule_taxes(row, itemData, templateData, frm, multip
             if (
                 tax.custom_tax_category === "Further Sales Tax" &&
                 frm.doc.doctype === "Sales Invoice" &&
-                frm.doc.custom_customer_st_status === "Unregistered"
+                frm.doc.custom_sales_tax_status === "Unregistered"
             ) {
                 furtherTaxRate = flt(tax.tax_rate || 0, precision);
                 furtherTax = multiplier * (totalTaxableAmount * furtherTaxRate / 100);
@@ -622,9 +716,31 @@ function apply_tax_summary(frm) {
         return;
     }
 
-    // Fetch accounts for first item with taxes (assuming all items use same accounts for same tax type)
-    // In real scenario, you might need to group by account and sum
-    get_tax_accounts_for_row(items_with_taxes[0], frm, (accounts) => {
+    // Use cached template to extract accounts (no need to fetch again!)
+    const first_item = items_with_taxes[0];
+    const cached_template = get_cached_tax_template(`template_${first_item.item_code}`);
+    let accounts = {
+        sales_tax_account: "",
+        further_tax_account: "",
+        advance_tax_account: ""
+    };
+    
+    if (cached_template) {
+        console.log(`[apply_tax_summary] Using cached template for item: ${first_item.item_code}`);
+        accounts = extract_accounts_from_cached_template(cached_template);
+    } else {
+        console.warn(`[apply_tax_summary] No cached template found. Falling back to account lookup for item: ${first_item.item_code}`);
+        // Fallback to original method
+        get_tax_accounts_for_row(first_item, frm, (retrieved_accounts) => {
+            accounts = retrieved_accounts;
+            perform_tax_summary_update();
+        });
+        return;
+    }
+    
+    perform_tax_summary_update();
+    
+    function perform_tax_summary_update() {
         console.log(`[apply_tax_summary] Retrieved accounts:`, accounts);
         
         get_advance_tax_from_template_for_row(items_with_taxes[0], frm, (advance) => {
@@ -766,7 +882,7 @@ function apply_tax_summary(frm) {
                 accounts: accounts
             });
         });
-    });
+    }
 }
 
 
@@ -995,7 +1111,7 @@ function calculate_taxes(frm, row, manual_override_field) {
                                 if (
                                     rate.custom_tax_category === "Further Sales Tax" &&
                                     frm.doc.doctype === "Sales Invoice" &&
-                                    frm.doc.custom_customer_st_status === "Unregistered"
+                                    frm.doc.custom_sales_tax_status === "Unregistered"
                                 ) {
                                     further_tax += multiplier * (rate.tax_rate * 0.01 * base_amount);
                                 }
@@ -1056,7 +1172,7 @@ function calculate_taxes(frm, row, manual_override_field) {
                                 if (
                                     rate.custom_tax_category === "Further Sales Tax" &&
                                     frm.doc.doctype === "Sales Invoice" &&
-                                    frm.doc.custom_customer_st_status === "Unregistered"
+                                    frm.doc.custom_sales_tax_status === "Unregistered"
                                 ) {
                                     further_tax += multiplier * (rate.tax_rate * 0.01 * base_amount);
                                 }
@@ -1133,6 +1249,10 @@ function calculate_taxes(frm, row, manual_override_field) {
                 },
                 callback: function(response) {
                     if (response.message) {
+                        // ✅ CACHE THE TEMPLATE FOR LATER USE IN apply_tax_summary()
+                        cache_tax_template(`template_${row.item_code}`, response.message);
+                        console.log(`[calculate_taxes] Cached template for item: ${row.item_code}`);
+                        
                         const tax_rates = response.message.taxes || [];
 
                         tax_rates.forEach(rate => {
@@ -1145,9 +1265,10 @@ function calculate_taxes(frm, row, manual_override_field) {
                             if (
                                 rate.custom_tax_category === "Further Sales Tax" &&
                                 frm.doc.doctype === "Sales Invoice" &&
-                                frm.doc.custom_customer_st_status === "Unregistered"
+                                frm.doc.custom_sales_tax_status === "Unregistered"
                             ) {
                                 further_tax += multiplier * (rate.tax_rate * 0.01 * base_amount);
+                                further_tax_rate = rate.tax_rate;
                             }
                         });
 
